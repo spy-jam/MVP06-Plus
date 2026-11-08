@@ -179,9 +179,6 @@ def xbox_data_for_art(root):
 
 def build_art(kind, src, root, log):
     """ps2_icons from the PS2 disc; only the art's files are read, into a temporary folder that's deleted."""
-    if kind == "gamecube":
-        raise discs.DiscError("there was no GameCube MVP 06: for GameCube art, choose your MVP05-Plus folder (its "
-                              "gc_icons, made from the 2005 GameCube disc), or a 06 gc_icons folder or .zip")
     xbox_data = xbox_data_for_art(root)
     tmp = tempfile.mkdtemp(prefix="mvp-installer-")
     try:
@@ -193,6 +190,30 @@ def build_art(kind, src, root, log):
         run_builder(builder, [xbox_data, os.path.join(tmp, "DATA"), built], "ps2_icons")
         put_icons(built, os.path.join(root, "ps2_icons"))
         log.say(f"ps2_icons made ({count_files(os.path.join(root, 'ps2_icons'))} files).")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def build_gc_from_discs(gc_src, xbox05_src, root, log):
+    """gc_icons for 06 from the MVP 2005 GameCube and Xbox discs: 2005's GameCube art made first, as MVP05-Plus makes
+    it (make_icons05.py), from only the files it needs on each disc, then made into 06's. All in a temporary folder."""
+    if not xbox05_src:
+        raise discs.DiscError("the 2005 GameCube disc's art is made together with the MVP Baseball 2005 Xbox disc: "
+                              "choose that too (or your MVP05-Plus folder instead of both)")
+    xbox_data_for_art(root)
+    tmp = tempfile.mkdtemp(prefix="mvp-installer-")
+    try:
+        with discs.open_gamecube(gc_src) as d:
+            log.say(f"MVP 2005 GameCube disc: reading the {len(discs.GC05_ART_FILES)} files the art needs")
+            discs.extract(d, discs.GC05_ART_FILES, os.path.join(tmp, "gc"))
+        with discs.open_xbox(xbox05_src, discs.XBOX05_TITLE, discs.XBOX05_NAME) as d:
+            log.say(f"MVP 2005 Xbox disc: reading the {len(discs.XBOX05_ART_FILES)} files the art needs")
+            discs.extract(d, discs.XBOX05_ART_FILES, os.path.join(tmp, "xb"))
+        set2005 = os.path.join(tmp, "gc_icons_2005")
+        import make_icons05 as builder
+        run_builder(builder, [os.path.join(tmp, "xb", "data"), os.path.join(tmp, "gc", "data"), set2005],
+                    "2005's gc_icons")
+        build_gc_from_2005(set2005, root, log)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -307,20 +328,25 @@ def import_icons(kind, src, root, log):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
-def run(root, xbox=None, gamecube=None, ps2=None, log=None):
-    """gamecube: an MVP05-Plus folder or its gc_icons (2005's GameCube art, made into 06's), or a 06 gc_icons folder or
-    .zip (copied). ps2: the MVP 06 PS2 disc image (the art is made from it), or a ps2_icons folder or .zip."""
+def run(root, xbox=None, gamecube=None, ps2=None, log=None, xbox05=None):
+    """ps2: the MVP 06 PS2 disc image (the art is made from it), or a ps2_icons folder or .zip.
+    gamecube (experimental): the MVP 2005 GameCube disc, with xbox05 the MVP 2005 Xbox disc; or an MVP05-Plus folder
+    or its gc_icons (2005's GameCube art); either made into 06's. Or a 06 gc_icons folder or .zip, copied."""
     load_tools(root)
     log = log or Log()
     if not (xbox or gamecube or ps2):
-        raise discs.DiscError("choose your Xbox disc, and any GameCube or PS2 disc or icons")
+        raise discs.DiscError("choose your Xbox disc, and any PS2 disc or GameCube art")
+    if gamecube and xbox05 and is_icons_source(gamecube):
+        log.say("(the 2005 Xbox disc isn't needed with an MVP05-Plus folder or a gc_icons set: left out)")
     if xbox:
         install_xbox(xbox, root, log)
-    for kind, src in (("gamecube", gamecube), ("ps2", ps2)):
-        if src and is_icons_source(src):
-            import_icons(kind, src, root, log)
-        elif src:
-            build_art(kind, src, root, log)
+    if ps2:
+        (import_icons if is_icons_source(ps2) else build_art)("ps2", ps2, root, log)
+    if gamecube:
+        if is_icons_source(gamecube):
+            import_icons("gamecube", gamecube, root, log)
+        else:
+            build_gc_from_discs(gamecube, xbox05, root, log)
     if not os.path.isfile(os.path.join(root, "assets", "default.xbe")):
         log.say("The Xbox files aren't in assets yet: choose your Xbox disc too, the game needs it.")
     else:
@@ -418,33 +444,54 @@ def gui(root):
         ("xbox", "Xbox disc (required)", [("Xbox image", "*.iso *.xiso"), ("All files", "*.*")], True),
         ("ps2", "MVP 06 PS2 disc, or a ps2_icons folder or .zip (optional, button art)",
          [("PS2 image or icons zip", "*.iso *.chd *.zip"), ("All files", "*.*")], "ps2_icons"),
-        ("gamecube", "GameCube art (optional, experimental): your MVP05-Plus folder, or a 06 gc_icons folder or .zip",
-         [("gc_icons zip", "*.zip"), ("All files", "*.*")], "gc_icons"),
+        ("gamecube", "MVP 2005 GameCube disc, or your MVP05-Plus folder, or a 06 gc_icons folder or .zip",
+         [("GameCube image or gc_icons zip", "*.iso *.gcm *.rvz *.gcz *.ciso *.wia *.zip"), ("All files", "*.*")],
+         "gc_icons"),
+        ("xbox05", "MVP 2005 Xbox disc (needed with the 2005 GameCube disc)",
+         [("Xbox image", "*.iso *.xiso"), ("All files", "*.*")], True),
     ]
+    folder_titles = {"xbox": "The folder with default.xbe", "ps2": "The ps2_icons folder",
+                     "gamecube": "Your MVP05-Plus folder, or a gc_icons folder",
+                     "xbox05": "The MVP Baseball 2005 folder with default.xbe"}
     vars_ = {}
     labels = {}
+    gc_rows = ttk.Frame(frm)  # shown when the experimental GameCube box is ticked
     for i, (k, label, types, folder_ok) in enumerate(kinds):
         v = tk.StringVar()
         vars_[k] = v
-        labels[k] = ttk.Label(frm, text=label)
-        labels[k].grid(row=2 + 2 * i, column=0, columnspan=3, sticky="w")
-        ttk.Entry(frm, textvariable=v, width=60).grid(row=3 + 2 * i, column=0, sticky="we", pady=(0, 6))
+        parent, r = (frm, 2 + 2 * i) if k in ("xbox", "ps2") else (gc_rows, 2 * (i - 2))
+        labels[k] = ttk.Label(parent, text=label)
+        labels[k].grid(row=r, column=0, columnspan=3, sticky="w")
+        ttk.Entry(parent, textvariable=v, width=60).grid(row=r + 1, column=0, sticky="we", pady=(0, 6))
 
         def pick(v=v, types=types):
             p = filedialog.askopenfilename(filetypes=types)
             if p:
                 v.set(os.path.normpath(p))
 
-        ttk.Button(frm, text="Zip…" if k == "gamecube" else "Image…", command=pick).grid(
-            row=3 + 2 * i, column=1, padx=(6, 0), pady=(0, 6))
+        ttk.Button(parent, text="Image…", command=pick).grid(row=r + 1, column=1, padx=(6, 0), pady=(0, 6))
 
-        def pickdir(v=v, what=folder_ok):
-            p = filedialog.askdirectory(title="The folder with default.xbe" if what is True else
-                                        "Your MVP05-Plus folder, or a gc_icons folder" if what == "gc_icons" else
-                                        f"The {what} folder")
+        def pickdir(v=v, k=k):
+            p = filedialog.askdirectory(title=folder_titles[k])
             if p:
                 v.set(os.path.normpath(p))
-        ttk.Button(frm, text="Folder…", command=pickdir).grid(row=3 + 2 * i, column=2, padx=(6, 0), pady=(0, 6))
+        ttk.Button(parent, text="Folder…", command=pickdir).grid(row=r + 1, column=2, padx=(6, 0), pady=(0, 6))
+
+    gc_on = tk.BooleanVar(value=False)
+
+    def gc_toggle():
+        if gc_on.get():
+            gc_rows.grid(row=7, column=0, columnspan=3, sticky="we")
+        else:
+            gc_rows.grid_remove()
+            vars_["gamecube"].set("")
+            vars_["xbox05"].set("")
+    ttk.Checkbutton(frm, text="Experimental GameCube support: GameCube button art", variable=gc_on,
+                    command=gc_toggle).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 2))
+    ttk.Label(gc_rows, foreground="#666", wraplength=560, justify="left", text=(
+        "There was no GameCube MVP 06, so its GameCube art is made from MVP 2005's: from the 2005 GameCube and Xbox "
+        "discs together (only the files it needs are read), or from an MVP05-Plus folder that has GameCube art. "
+        "It takes a minute or two.")).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 4))
 
     bar = ttk.Progressbar(frm, length=440, mode="determinate", maximum=1.0)
     bar.grid(row=8, column=0, columnspan=3, sticky="we", pady=(8, 4))
@@ -960,12 +1007,13 @@ def main():
     a.add_argument("--xbox")
     a.add_argument("--gamecube")
     a.add_argument("--ps2")
+    a.add_argument("--xbox05", help="the MVP Baseball 2005 Xbox disc, with --gamecube the 2005 GameCube disc")
     a.add_argument("--dir", default=game_dir())
     o = a.parse_args()
-    if not (o.xbox or o.gamecube or o.ps2):
+    if not (o.xbox or o.gamecube or o.ps2 or o.xbox05):
         return gui(o.dir)
     try:
-        run(o.dir, o.xbox, o.gamecube, o.ps2)
+        run(o.dir, o.xbox, o.gamecube, o.ps2, xbox05=o.xbox05)
     except discs.DiscError as e:
         raise SystemExit(f"stopped: {e}")
 

@@ -30,7 +30,7 @@ Button art follows the controller connected when the game starts. Without the ar
 
    * **Xbox** (required): a Redump `.iso`, `.xiso`, or a folder of extracted files.
    * **PS2** (optional, for PS2 art): your MVP 06 NCAA Baseball PS2 disc, `.iso`, or `.chd` with MAME's `chdman` (the Launcher finds it, or asks where it is). Only the 4 files the art needs are read from it.
-   * **GameCube art** (optional): your **MVP05-Plus folder**. 06's GameCube art is made from the MVP 2005 GameCube art there (it takes a minute), so install MVP05-Plus with its GameCube art first.
+   * **Experimental GameCube support** (optional): tick it for GameCube button art. There was no GameCube MVP 06, so the art is made from MVP 2005's: choose your **MVP 2005 GameCube disc** and **MVP 2005 Xbox disc** (only the files the art needs are read from each), or just your **MVP05-Plus folder** if it has GameCube art. It takes a minute or two.
    * Already have an MVP 06 `gc_icons` or `ps2_icons` set? Choose its folder or `.zip` instead.
 
 3. Press **Launch MVP 06**. From then on, the Launcher opens on what's installed, with Launch. To quit the game, press **Esc** (it asks first).

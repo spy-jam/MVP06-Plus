@@ -181,16 +181,18 @@ class XboxFolder:
         pass
 
 
-def open_xbox(path):
+def open_xbox(path, title=None, name=None):
+    """title / name: another game's (MVP 2005's, for the GameCube art), else this one's."""
+    title, name_wanted = title or XBOX_TITLE, name or GAME_NAME
     d = XboxFolder(path) if os.path.isdir(path) else XboxImage(path)
     try:
         title_id, name = xbe_title(d.read("default.xbe"))
     except KeyError:
         d.close()
         raise DiscError("there's no default.xbe on that disc")
-    if title_id != XBOX_TITLE:
+    if title_id != title:
         d.close()
-        raise DiscError(f"that's {name or 'another game'} ({title_id:08X}), not {GAME_NAME} for Xbox")
+        raise DiscError(f"that's {name or 'another game'} ({title_id:08X}), not {name_wanted} for Xbox")
     return d
 
 
@@ -470,6 +472,14 @@ def open_ps2(path):
 # the layouts come from the Xbox game's own files
 PS2_ART_FILES = ["data/frontend/shared.big", "data/frontend/igonly.big", "data/frontend/coopov.big",
                  "data/igshapes/igcrsr.ssh"]
+
+# GameCube art for 06 is made from MVP 2005's (there was no GameCube MVP 06), which is made from the 2005 GameCube
+# and Xbox discs together (tools/gc_layout/make_icons05.py, as MVP05-Plus does): only these are read from each
+XBOX05_TITLE, XBOX05_NAME = 0x45410056, "MVP Baseball 2005"
+LOADS = [f"data/frontend/load{i}.big" for i in range(8)]
+GC05_ART_FILES = ["data/frontend/shared.big", "data/frontend/igonly.big"] + LOADS + ["data/igshapes/igcrsr.gsh"]
+XBOX05_ART_FILES = ["data/frontend/" + n for n in ("shared.big", "igonly.big", "ingame.big", "frontend.big",
+                                                   "minigame.big")] + LOADS + ["data/igshapes/igcrsr.xsh"]
 
 
 def extract(disc, names, dest, upper=False, progress=None):
