@@ -1,0 +1,40 @@
+MVP06-Plus by spy_jam - built on Mad Dog's MVP06 Title-ID update below
+
+Plus adds GameCube controllers (Wii U / Switch adapter, experimental layout on 06) and
+PlayStation controllers, played with their own releases' control layouts and button art,
+SteamOS / Proton fixes, a shader cache, save backups and the MVP06-Plus Launcher. Start
+with MVP06-Plus-Launcher.exe: it installs the game from your discs. See README.md, and
+docs/MVP06-HANDOFF.md for how it all works. Mad Dog's original notes follow unchanged.
+
+------------------------------------------------------------------------------------------
+MVP06 - Title-ID compatibility update - October 24, 2026
+
+STARTUP CHECK
+The runtime accepts a structurally readable XBE certificate with title ID 4541008D.
+Whole-file SHA-1 is logged for troubleshooting but no longer gates startup.
+Xbox Live certificate data, media/region flags and other per-copy metadata do
+not cause the old different-release warning. A wrong title or invalid header
+is rejected. This does not guarantee compatibility with every regional or
+modified game revision. Game code and assets still need to be compatible.
+
+CONTROLS
+F11/Alt+Enter toggles windowed/borderless; Alt+F4 exits.
+The mouse cursor hides during active fullscreen/borderless gameplay.
+F12 saves uniquely named PNG files in screenshots beside the EXE. F3 unchanged.
+
+BUILD
+Requires Windows x64, Visual Studio C++ tools/Windows SDK, LLVM Clang/lld,
+CMake 3.25+ and Ninja. Open an x64 developer prompt with clang, clang++, cmake
+and ninja on PATH. Put your extracted Xbox files in assets/default.xbe and
+its companion files/folders. Run Build-Source.cmd to regenerate and build
+MVP06.exe. It does not launch the game. Dependencies are bundled.
+Keep config/game.toml intact; mappings remain specific to the supported build.
+Title-ID acceptance at runtime does not broaden the recompiler's mappings.
+Edit src or sdk/runtime; generated code is recreated by the build.
+Use installed Visual C++ runtimes or the playable package's runtime DLLs.
+Game files, generated game code and compiled executables are not included.
+
+VALIDATION
+Both baseball release builds and the isolated title-parser tests passed.
+Games were not launched for this update. Retain all licenses and third-party
+notices. SHA256-MANIFEST.json covers every packaged file except itself.

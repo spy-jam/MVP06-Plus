@@ -1,0 +1,25 @@
+MVP 06 NCAA Baseball: every action the PS2 release binds differently from the Xbox release
+Buttons named by place: Cross/A, Circle/B, Square/X, Triangle/Y, L1/LT, R1/RT, L2/White, R2/Black.
+
+Action  Xbox                                           PS2
+0x002   Circle/B [press]                               Triangle/Y [press]
+0x004   Triangle/Y [press]                             Circle/B [press]
+0x01B   unbound                                        Triangle/Y [hold] + Cross/A [hold]
+0x06D   R2/Black [hold]                                R1/RT [hold]
+0x072   R2/Black [analog]                              R1/RT [analog]
+0x077   L2/White [hold]                                R2/Black [hold]
+0x078   L2/White [release]                             R2/Black [release]
+0x079   L2/White [hold] + D-Up [repeat]                R2/Black [hold] + D-Up [repeat]
+0x07A   L2/White [hold] + D-Down [repeat]              R2/Black [hold] + D-Down [repeat]
+0x07B   L2/White [hold] + D-Left [repeat]              R2/Black [hold] + D-Left [repeat]
+0x07C   L2/White [hold] + D-Left [release]             R2/Black [hold] + D-Left [release]
+0x07D   L2/White [hold] + D-Right [repeat]             R2/Black [hold] + D-Right [repeat]
+0x07E   L2/White [hold] + D-Right [release]            R2/Black [hold] + D-Right [release]
+0x07F   L2/White [hold] + L1/LT [repeat]               R2/Black [hold] + L1/LT [repeat]
+0x080   L2/White [hold] + L1/LT [release]              R2/Black [hold] + L1/LT [release]
+0x081   L2/White [hold] + R1/RT [repeat]               R2/Black [hold] + R1/RT [repeat]
+0x082   L2/White [hold] + R1/RT [release]              R2/Black [hold] + R1/RT [release]
+0x0A6   R2/Black [press]                               R1/RT [press] (without L3 [hold])
+0x0AF   Circle/B [press] + R1/RT [hold]                Circle/B [press] + L2/White [hold]
+0x0B0   Triangle/Y [press] + R1/RT [hold]              Triangle/Y [press] + L2/White [hold]
+0x0B1   Square/X [press] + R1/RT [hold]                Square/X [press] + L2/White [hold]

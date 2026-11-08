@@ -1,0 +1,208 @@
+MVP 06 NCAA: DRAFT GameCube controls (experimental; there was no GameCube release)
+Built from the real MVP 2005 GameCube table: actions that match 05 take its GameCube binding;
+actions new or changed in 06 are PROPOSED: kept as the Xbox binds them (each button lands on the GameCube
+button for the same virtual button, as in 05), except the few that use a stick click, decided one by one.
+
+Buttons (virtual button: Xbox / GameCube, as in 05):
+  v1   Start        Start
+  v2   Back         Z
+  v3   A            A
+  v4   B            X
+  v5   X            B
+  v6   Y            Y
+  v7   LT           L
+  v8   RT           R
+  v9   White        nothing
+  v10  Black        nothing
+  v11  LS click     nothing
+  v12  RS click     nothing
+  v13  D-Up         D-Up
+  v14  D-Down       D-Down
+  v15  D-Left       D-Left
+  v16  D-Right      D-Right
+  v17  Stick right  Stick right
+  v18  Stick left   Stick left
+  v19  Stick up     Stick up
+  v20  Stick down   Stick down
+  v21  RS right     C right
+  v22  RS left      C left
+  v23  RS up        C up
+  v24  RS down      C down
+
+Substitutions 05 GameCube made (Xbox button -> GameCube button, count):
+  Start      -> Start 3/3
+  Back       -> Z 5/5
+  A          -> A 13/13
+  B          -> X 10/12, B 1/12, L 1/12
+  X          -> B 10/12, Y 1/12, L 1/12
+  Y          -> Y 10/17, B 4/17, X 1/17
+  LT         -> L 26/30, C left 1/30, X 1/30
+  RT         -> R 13/19, nothing 3/19, Z 2/19
+  White      -> Z 16/25, C left 5/25, nothing 3/25
+  Black      -> C right 5/16, R 5/16, nothing 3/16
+  LS click   -> Z 6/14, unbound 3/14, nothing 2/14
+  RS click   -> Start 4/13, unbound 3/13, C up 2/13
+  D-Up       -> D-Up 9/9
+  D-Down     -> D-Down 9/9
+  D-Left     -> D-Left 10/10
+  D-Right    -> D-Right 10/10
+  Stick right -> Stick right 4/4
+  Stick left -> Stick left 4/4
+  Stick up   -> Stick up 3/3
+  Stick down -> Stick down 3/3
+  RS right   -> C right 2/2
+  RS left    -> C left 2/2
+  RS up      -> C up 2/2
+  RS down    -> C down 2/2
+
+Every 06 action whose GameCube binding differs from the Xbox, and every new 06 action:
+
+Action Xbox                                         GameCube (draft)                             source
+0x003  X [press]                                    Y [press]                                    05 GC 0x003
+0x004  Y [press]                                    X [press]                                    05 GC 0x004
+0x00E  LT [repeat]                                  L [repeat]                                   05 GC 0x00E
+0x00F  LT [release]                                 L [release]                                  05 GC 0x00F
+0x010  RT [repeat]                                  R [repeat]                                   05 GC 0x010
+0x011  RT [release]                                 R [release]                                  05 GC 0x011
+0x012  White [repeat]                               C left [repeat] (without Z [hold])           05 GC 0x012
+0x013  White [release]                              C left [release] (without Z [hold])          05 GC 0x013
+0x014  Black [repeat]                               C right [repeat] (without Z [hold])          05 GC 0x014
+0x015  Black [release]                              C right [release] (without Z [hold])         05 GC 0x015
+0x016  RS click [repeat]                            C up [repeat] (without Z [hold])             05 GC 0x016
+0x017  RS click [release]                           C up [release] (without Z [hold])            05 GC 0x017
+0x018  LS click [repeat]                            Z [repeat]                                   PROPOSED: LS click repeat -> Z repeat: the menus' L3 (the ballpark editor Hide, drawn as Z). 05 GC, without an L3, left it and 0x019 empty
+0x019  LS click [release]                           Z [release]                                  PROPOSED: LS click release -> Z release, as 0x018
+0x01A  Back [press]                                 Z [press]                                    05 GC 0x019
+0x01B  unbound                                      Z [hold]                                     05 GC 0x01A
+0x01C  Back [press] + RS click [-1]                 Z [press] + nothing [-1]                     PROPOSED: as Xbox (buttons translate)
+0x01D  Back [press] + RS click [-1]                 Z [press] + nothing [-1]                     PROPOSED: as Xbox (buttons translate)
+0x01E  Back [press] + RS click [-1]                 Z [press] + nothing [-1]                     PROPOSED: as Xbox (buttons translate)
+0x01F  Back [press] + RS click [-1]                 Z [press] + nothing [-1]                     PROPOSED: as Xbox (buttons translate)
+0x020  LS click [press] + RS click [-1]             unbound                                      05 GC 0x01F
+0x021  LS click [press] + RS click [-1]             unbound                                      05 GC 0x020
+0x027  White [repeat]                               C left [repeat]                              05 GC 0x026
+0x028  Black [repeat]                               C right [repeat]                             05 GC 0x027
+0x029  X [press]                                    B [press]                                    05 GC 0x028
+0x02A  RT [press]                                   R [press]                                    05 GC 0x029
+0x02B  B [press]                                    X [press]                                    05 GC 0x02A
+0x02D  LT [hold] + D-Left [repeat]                  L [hold] + D-Left [repeat]                   05 GC 0x02C
+0x02E  LT [hold] + D-Right [repeat]                 L [hold] + D-Right [repeat]                  05 GC 0x02D
+0x02F  LS click [press]                             Z [press]                                    PROPOSED: LS click press -> Z press (05 GC put LS click jobs on Z most often)
+0x030  LT [analog]                                  L [analog]                                   05 GC 0x02E
+0x031  RT [analog]                                  R [analog]                                   05 GC 0x02F
+0x032  X [analog]                                   B [analog]                                   05 GC 0x030
+0x033  B [analog]                                   X [analog]                                   05 GC 0x031
+0x036  RS down [analog] minus RS up [analog]        C down [analog] minus C up [analog]          05 GC 0x034
+0x037  RS right [analog] minus RS left [analog]     C right [analog] minus C left [analog]       05 GC 0x035
+0x03B  Y [press]                                    Z [press]                                    05 GC 0x039
+0x040  B [hold]                                     X [hold]                                     05 GC 0x03E
+0x042  X [hold]                                     B [hold]                                     05 GC 0x040
+0x043  unless LT [hold]: analog source 185          unless L [hold]: analog source 185           05 GC 0x041
+0x044  unless LT [hold]: analog source 181          unless L [hold]: analog source 181           05 GC 0x042
+0x045  unless LT [hold]: analog source 191          unless L [hold]: analog source 191           05 GC 0x043
+0x046  while LT [hold]: analog source 186           while L [hold]: analog source 186            05 GC 0x044
+0x047  while LT [hold]: analog source 191           while L [hold]: analog source 191            05 GC 0x045
+0x048  D-Right [hold] (without LT [hold])           D-Right [hold] (without L [hold])            05 GC 0x046
+0x049  D-Left [hold] (without LT [hold])            D-Left [hold] (without L [hold])             05 GC 0x047
+0x04B  RT [analog]                                  R [analog]                                   05 GC 0x049
+0x04C  Back [hold]                                  Z [hold]                                     05 GC 0x04A
+0x04D  while LT [hold]: analog source 188           while L [hold]: analog source 188            05 GC 0x04B
+0x04E  LS click [press]                             unbound                                      05 GC 0x04C
+0x04F  RS click [press]                             unbound                                      05 GC 0x04D
+0x050  LT [press]                                   L [press]                                    05 GC 0x04E
+0x051  RT [press]                                   R [press]                                    05 GC 0x04F
+0x052  White [press]                                C left [press]                               05 GC 0x050
+0x053  Black [press]                                C right [press]                              05 GC 0x051
+0x054  LT [release]                                 L [release]                                  05 GC 0x052
+0x055  RT [release]                                 R [release]                                  05 GC 0x053
+0x056  White [release]                              nothing [release]                            05 GC 0x054
+0x057  Black [release]                              nothing [release]                            05 GC 0x055
+0x058  LT [hold]                                    L [hold]                                     05 GC 0x056
+0x059  RT [hold]                                    R [hold]                                     05 GC 0x057
+0x05A  White [hold]                                 C left [hold]                                05 GC 0x058
+0x05B  Black [hold]                                 C right [hold]                               05 GC 0x059
+0x05D  Y [press]                                    B [press]                                    05 GC 0x05B
+0x05E  Y [press]                                    B [press]                                    05 GC 0x05C
+0x05F  Y [hold]                                     B [hold]                                     05 GC 0x05D
+0x060  Back [press] or Start [press]                Z [press] or Start [press]                   05 GC 0x05E
+0x061  RS right [analog] minus RS left [analog]     C right [analog] minus C left [analog]       05 GC 0x05F
+0x062  RS up [analog] minus RS down [analog]        C up [analog] minus C down [analog]          05 GC 0x060
+0x063  LT [analog]                                  L [analog]                                   05 GC 0x061
+0x065  RT [analog]                                  R [analog]                                   05 GC 0x063
+0x067  White [press]                                nothing [press]                              05 GC 0x065
+0x068  Black [press]                                nothing [press]                              05 GC 0x066
+0x06A  B [hold]                                     X [hold]                                     05 GC 0x068
+0x06B  X [hold]                                     B [hold]                                     05 GC 0x069
+0x06D  Black [hold]                                 R [hold]                                     05 GC 0x06B
+0x06F  B [analog]                                   X [analog]                                   05 GC 0x06D
+0x070  X [analog]                                   B [analog]                                   05 GC 0x06E
+0x072  Black [analog]                               R [analog]                                   05 GC 0x070
+0x074  LT [hold] (without LS click [hold])          L [hold] (without D-Down [hold])             PROPOSED: LT hold without LS click hold -> L hold without D-Down hold. The pitching handler (0x2A01E0) checks 0x0AD (hit the batter) each frame and else this (pickoff, state 2); 05 GC dropped the exclusion, so with D-Down as a press, L still held turned hit-batter into pickoff a frame later
+0x075  Back [press] (without LT [-1])               Z [hold] + X [press]                         PROPOSED: Back without LT -> Z hold + X press, as 05 GC bound the same action (05 0x076)
+0x076  LS click [press]                             Z [press]                                    PROPOSED: LS click press -> Z press, as 05 GC bound its LS click neighbour (05 0x071)
+0x077  White [hold]                                 while Z [hold]: analog source 189            05 GC 0x077
+0x078  White [release]                              Z [release]                                  05 GC 0x078
+0x079  White [hold] + D-Up [repeat]                 Z [hold] + D-Up [repeat]                     05 GC 0x079
+0x07A  White [hold] + D-Down [repeat]               Z [hold] + D-Down [repeat]                   05 GC 0x07A
+0x07B  White [hold] + D-Left [repeat]               Z [hold] + D-Left [repeat]                   05 GC 0x07B
+0x07C  White [hold] + D-Left [release]              Z [hold] + D-Left [release]                  05 GC 0x07C
+0x07D  White [hold] + D-Right [repeat]              Z [hold] + D-Right [repeat]                  05 GC 0x07D
+0x07E  White [hold] + D-Right [release]             Z [hold] + D-Right [release]                 05 GC 0x07E
+0x07F  White [hold] + LT [repeat]                   Z [hold] + L [repeat]                        05 GC 0x07F
+0x080  White [hold] + LT [release]                  Z [hold] + L [release]                       05 GC 0x080
+0x081  White [hold] + RT [repeat]                   Z [hold] + R [repeat]                        05 GC 0x081
+0x082  White [hold] + RT [release]                  Z [hold] + R [release]                       05 GC 0x082
+0x0A3  B [press]                                    X [press]                                    05 GC 0x0A3
+0x0A4  X [press]                                    B [press]                                    05 GC 0x0A4
+0x0A6  Black [press]                                R [press]                                    05 GC 0x0A6
+0x0A7  B [press] + LT [hold]                        L [hold] + X [press]                         05 GC 0x0A7
+0x0A8  Y [press] + LT [hold]                        L [hold] + Y [press]                         05 GC 0x0A8
+0x0A9  X [press] + LT [hold]                        L [hold] + B [press]                         05 GC 0x0A9
+0x0AA  A [press] + LT [hold]                        A [press] + L [hold]                         05 GC 0x0AA
+0x0AC  LT [hold] + RS click [hold]                  L [hold] + D-Up [press]                      05 GC 0x0AC
+0x0AD  LT [hold] + LS click [hold]                  L [hold] + D-Down [hold]                     PROPOSED: LT hold + LS click hold (hit the batter) -> L hold + D-Down hold: both held, as the Xbox reads it (05 GC had D-Down as a press, which holds for one frame only)
+0x0AF  B [press] + RT [hold]                        X [press] + nothing [hold]                   05 GC 0x0B0
+0x0B0  Y [press] + RT [hold]                        Y [press] + nothing [hold]                   05 GC 0x0B1
+0x0B1  X [press] + RT [hold]                        B [press] + nothing [hold]                   05 GC 0x0B2
+0x0B3  analog source 185                            analog source 185                            PROPOSED: as Xbox (buttons translate)
+0x0B4  A [release]                                  A [release] (without nothing)                05 GC 0x0B4
+0x0B6  A [press]                                    A [press] (without Z [hold])                 05 GC 0x0B8
+0x0B7  analog source 185                            analog source 185                            PROPOSED: as Xbox (buttons translate)
+0x0B8  RT [analog]                                  R [analog]                                   PROPOSED: as Xbox (buttons translate)
+0x0B9  LT [analog]                                  L [analog]                                   PROPOSED: as Xbox (buttons translate)
+0x0BA  RS click [hold]                              Z [hold] + A [hold]                          PROPOSED: RS click hold (bunt) -> Z hold + A hold, the 05 GameCube bunt (05 0x0B9: Z + A, the Xbox RS/LS click hold)
+0x0BB  Y [press]                                    B [press]                                    05 GC 0x0BA
+0x0BF  RS click [hold]                              Z [hold] + A [hold]                          PROPOSED: RS click hold -> Z hold + A hold, as 0x0BA
+0x0C0  RT [analog]                                  Z [press]                                    05 GC 0x0BE
+0x0C2  B [analog]                                   X [analog]                                   05 GC 0x0C0
+0x0C4  X [analog]                                   B [analog]                                   05 GC 0x0C2
+0x0C6  LT [press]                                   L [press]                                    05 GC 0x0C4
+0x0C7  Black [analog]                               R [hold]                                     05 GC 0x0C5
+0x0C8  Black [analog]                               R [press]                                    05 GC 0x0C6
+0x0C9  RT [press]                                   Z [press]                                    05 GC 0x0C7
+0x0CA  RT [hold]                                    R [hold]                                     PROPOSED: as Xbox (buttons translate)
+0x0CD  analog source 181                            analog source 181                            PROPOSED: as Xbox (buttons translate)
+0x0D0  B [hold]                                     X [hold]                                     05 GC 0x0CC
+0x0D2  X [hold]                                     B [hold] (without Z [hold])                  05 GC 0x0CE
+0x0D3  D-Right [hold] (without White [hold])        D-Right [hold] (without Z [hold])            05 GC 0x0CF
+0x0D4  D-Up [hold] (without White [hold])           D-Up [hold] (without Z [hold])               05 GC 0x0D0
+0x0D5  D-Left [hold] (without White [hold])         D-Left [hold] (without Z [hold])             05 GC 0x0D1
+0x0D6  D-Down [hold] (without White [hold])         D-Down [hold] (without Z [hold])             05 GC 0x0D2
+0x0D7  analog source 181                            analog source 181                            PROPOSED: as Xbox (buttons translate)
+0x0D8  analog source 185                            analog source 185                            PROPOSED: as Xbox (buttons translate)
+0x0D9  LT [analog]                                  L [hold]                                     05 GC 0x0D3
+0x0DA  RT [analog]                                  R [hold]                                     PROPOSED: RT analog -> R hold, as 05 GC made its neighbours 0x0D9/0x0DB
+0x0DB  RT [analog]                                  R [hold]                                     05 GC 0x0D4
+0x0DC  White [hold]                                 unbound                                      05 GC 0x0D5
+0x0DD  Black [hold]                                 Z [hold] + B [hold]                          05 GC 0x0D6
+0x0E7  LT [analog]                                  L [analog]                                   05 GC 0x0E0
+0x0E8  RT [analog]                                  R [analog]                                   05 GC 0x0E1
+0x0EA  B [hold]                                     X [hold]                                     05 GC 0x0E3
+0x0EB  X [hold]                                     B [hold]                                     05 GC 0x0E4
+0x0ED  White [hold]                                 nothing [hold]                               05 GC 0x0E6
+0x0EE  Black [hold]                                 nothing [hold]                               05 GC 0x0E7
+0x0EF  LS click [hold]                              nothing [hold]                               05 GC 0x0E8
+0x0F0  RS click [hold]                              nothing [hold]                               05 GC 0x0E9
+0x0F1  Back [hold]                                  Z [hold]                                     05 GC 0x0EA
+
+222 actions from 05 GameCube, 22 proposed (10 of them judgment calls, marked with a reason).

@@ -1,0 +1,21 @@
+# 0 uses desktop dimensions. Set 1920 / 1080 for a 1080p target.
+display_mode = "fullscreen"
+# 0 x 0: your screen's own resolution (fullscreen then never switches the screen to another mode)
+width = 0
+height = 0
+render_percent = 100
+fps_cap = 60
+vsync = true
+anisotropic_filtering = 16
+
+# Enable the game's 1280x720 mode on widescreen output. Restart after changing.
+xbox_720p = true
+
+# MVP06-Plus: GameCube controllers (experimental layout on 06) and PlayStation pads, with their button art
+# (gc_icons / ps2_icons beside the exe, made by the Launcher).
+gamecube_layout = true
+gamecube_icons = true
+playstation_layout = true
+playstation_icons = true
+# How many save backups to keep in "save backups" (0: off).
+save_backups = 30

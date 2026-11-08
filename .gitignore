@@ -1,0 +1,26 @@
+__pycache__/
+# game files and anything made from them: never committed
+assets/*
+!assets/PUT-GAME-FILES-HERE.txt
+/gc_icons/
+/ps2_icons/
+*.iso
+*.xiso
+*.gcm
+*.rvz
+*.chd
+# build output and what the game writes beside itself
+/build/
+/out/
+/*.exe
+/*.dll
+/*.pdb
+/gcbridge
+/shader_cache/
+/screenshots/
+/hdd/
+/save backups/
+/*.log
+/gcbridge.out
+/mvp06.ico
+/mvp06-plus-launcher.json

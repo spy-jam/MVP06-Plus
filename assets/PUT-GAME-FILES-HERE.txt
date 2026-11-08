@@ -1,0 +1,1 @@
+Supply your own extracted Xbox game. Put default.xbe directly here with all game-root files and folders. No game files are supplied.

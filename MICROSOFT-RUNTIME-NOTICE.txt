@@ -1,0 +1,8 @@
+The Microsoft Visual C++ runtime DLLs in this folder are unmodified x64
+redistributable components from Microsoft.VC145.CRT, version 14.50.35710.
+Copyright Microsoft Corporation. They are not covered by the SDK MIT license.
+They are used locally by this application; no installer or system changes occur.
+
+d3dcompiler_ms.dll is d3dcompiler_47.dll from the Windows SDK, unmodified and renamed,
+a redistributable component of the Windows SDK. Copyright Microsoft Corporation.
+It is not covered by the SDK MIT license.

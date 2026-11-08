@@ -1,0 +1,21 @@
+SOURCE MAP (paths relative to this folder)
+config/game.toml              Validated symbols and extra guest entry points
+src/common/game_info.cpp     Title identity, settings/log names
+src/game/                    Title-specific host overrides/hooks
+sdk/runtime/app/settings.cpp TOML load/save, host output and render scale
+sdk/runtime/app/main.cpp     Window controls, lifecycle and sizing
+sdk/runtime/kernel/xboxkrnl.cpp EEPROM/AV pack and Xbox kernel emulation
+sdk/runtime/xdk/d3d8.cpp     Xbox D3D entry points and CreateDevice logging
+sdk/runtime/gpu/d3d12.cpp    Host renderer, PIP clipping and target clears
+sdk/runtime/gpu/shaders.*   Shader translation and constants
+sdk/runtime/core/input.cpp  SDL controller mapping
+sdk/runtime/audio/          Audio mixing/output implementation
+sdk/runtime/kernel/boot.cpp Shutdown path (check per-game differences)
+sdk/tools/recomp/           XBE-to-C++ generator
+sdk/tools/symbols/          Scanner (do not overwrite validated config)
+sdk/xdk/5849/               SDK-supplied layout/signature metadata
+sdk/cmake/XbeRecomp.cmake   Recompiler/runtime build wiring
+vendor/                    Dependency sources with original licenses
+
+Start with HANDOFF.txt. Search source comments and symbols for implementation
+specifics. Tests/captures/history remain in the original private workspace.

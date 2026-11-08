@@ -1,0 +1,42 @@
+# Builds what a release needs besides MVP06.exe (which needs your own game files, so it's built on your PC):
+#   MVP06-Plus-Launcher.exe  (Windows, PyInstaller)      gcbridge  (Linux, static, for SteamOS)
+# Run it from the Actions tab (Run workflow), or it runs on a pushed tag; the files are under the run's Artifacts.
+name: release tools
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*", "beta-*"]
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/installer/requirements.txt
+      - name: Test the disc readers
+        run: python tools/installer/tests/test_discs.py tools/installer
+      - name: Build MVP06-Plus-Launcher.exe
+        run: >
+          pyinstaller --onefile --windowed --name MVP06-Plus-Launcher
+          --paths tools/installer --paths tools/gc_layout --paths tools/ps2_layout
+          --hidden-import make_icons --hidden-import make_ps2_icons --hidden-import make_gc_icons06 --hidden-import make_ps2_icons06 --hidden-import cv2 --hidden-import scipy.ndimage --hidden-import backups --hidden-import settings --hidden-import title_icon --hidden-import shortcuts --hidden-import controllers
+          --collect-submodules iconlib
+          tools/installer/install.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MVP06-Plus-Launcher
+          path: dist/MVP06-Plus-Launcher.exe
+
+  gcbridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: gcc -O2 -march=x86-64 -static -s -o gcbridge tools/gcbridge/gcbridge.c
+      - run: grep -c GCBRIDGE-PROTOCOL-3 gcbridge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gcbridge
+          path: gcbridge
