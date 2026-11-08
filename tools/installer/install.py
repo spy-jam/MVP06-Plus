@@ -416,10 +416,10 @@ def gui(root):
     ttk.Label(frm, text=root, foreground="#555").grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 10))
     kinds = [
         ("xbox", "Xbox disc (required)", [("Xbox image", "*.iso *.xiso"), ("All files", "*.*")], True),
+        ("ps2", "MVP 06 PS2 disc, or a ps2_icons folder or .zip (optional, button art)",
+         [("PS2 image or icons zip", "*.iso *.chd *.zip"), ("All files", "*.*")], "ps2_icons"),
         ("gamecube", "GameCube art (optional, experimental): your MVP05-Plus folder, or a 06 gc_icons folder or .zip",
          [("gc_icons zip", "*.zip"), ("All files", "*.*")], "gc_icons"),
-        ("ps2", "PS2 disc, or a ps2_icons folder or .zip someone made (optional, button art)",
-         [("PS2 image or icons zip", "*.iso *.chd *.zip"), ("All files", "*.*")], "ps2_icons"),
     ]
     vars_ = {}
     labels = {}

@@ -154,4 +154,4 @@ Built the same way as MVP05-Plus (see its handoff's "Release work"): Mad Dog's M
   - PS2 art from the 06 PS2 disc: only `DATA/FRONTEND/SHARED.BIG`, `IGONLY.BIG`, `COOPOV.BIG` and `DATA/IGSHAPES/IGCRSR.SSH` are read (`discs.PS2_ART_FILES`), into `make_ps2_icons06.py` (the layouts come from the Xbox game's own files).
   - GameCube art: there was no GameCube MVP 06, so the GameCube row takes an MVP05-Plus folder or its `gc_icons` (MVP 2005's GameCube art, recognised by `load3.big`), run through `make_gc_icons06.py` (needs scipy and OpenCV, bundled in the exe); a 06 `gc_icons` set is copied as it is.
   - Checked against the v17 package: with the real 06 Xbox files, the 06 PS2 files and 05's gc_icons, both sets come out byte for byte the same.
-- **Release scripts:** `tools/Make-Test-Release.cmd` / `Make-Final-Release.cmd` take Mad Dog's `MVP06_Public-Beta` zip from Downloads for the runtime DLLs.
+- **Release scripts:** `tools/Make-MVP06-Test-Release.cmd` / `Make-MVP06-Final-Release.cmd` take Mad Dog's `MVP06_Public-Beta` zip from Downloads for the runtime DLLs.

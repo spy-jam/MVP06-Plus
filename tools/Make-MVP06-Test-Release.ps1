@@ -12,7 +12,7 @@ MVP06-Plus: a test release, made the way a real one is, in your Downloads folder
 
 Needs: Git and the GitHub CLI (https://cli.github.com), signed in once with "gh auth login"; Visual Studio (or its
 Build Tools) with the C++ tools, Windows SDK and the "C++ Clang tools" component (or LLVM on PATH).
-Run it with Make-Test-Release.cmd (beside it), or:  powershell -ExecutionPolicy Bypass -File Make-Test-Release.ps1
+Run it with Make-MVP06-Test-Release.cmd (beside it), or:  powershell -ExecutionPolicy Bypass -File Make-MVP06-Test-Release.ps1
 Nothing from the game is ever pushed: assets, gc_icons and ps2_icons are in .gitignore, and that's checked.
 #>
 param(
