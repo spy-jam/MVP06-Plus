@@ -184,6 +184,19 @@ try {
             }
         }
 
+        if ($Final) {
+            # a release that's already published stays as it is (its downloads and link): this run only updates the
+            # repository. A new release needs a new version name (-Version "Beta 2").
+            $draft = (& gh release view $tag --json isDraft --jq ".isDraft" 2>$null)
+            if ($LASTEXITCODE -eq 0 -and "$draft".Trim() -eq "false") {
+                Write-Host ""
+                Write-Host "Done: the repository on GitHub is up to date." -ForegroundColor Green
+                Write-Host "  $title is already published, so it was left as it is (no new build or release)."
+                Write-Host "  For a new release, run with a new version: Make-Final-Release.cmd -Version ""Beta 2"""
+                return
+            }
+        }
+
         Step "Building the Launcher and gcbridge on GitHub"
         $before = (& gh run list --workflow release-tools.yml --limit 1 --json databaseId --jq ".[0].databaseId" 2>$null)
         & gh workflow run release-tools.yml --ref main
