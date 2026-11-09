@@ -104,6 +104,13 @@ LEAVES = (b'RT:', b'TB:', b'TX:', b'TL:')  # coloured boxes and text: an Xbox on
 KNOWN_PICTURES = None  # picture names the Xbox data has (picture_names): an icon twin is taken only when its picture is one
 
 
+# the Xbox files picture_names reads: the front end archives the art is made from and the in-game sheets. Only these, as
+# the art was made and checked with; the whole data folder is about 2 GB, too much to read (MemoryError on Windows)
+PICTURE_SOURCES = {'frontend/' + n for n in ('apt.big', 'cbplay.big', 'cooplay.big', 'coopov.big', 'frontend.big',
+                                             'igonly.big', 'ingame.big', 'minigame.big', 'shared.big')} | \
+                  {'igshapes/' + n for n in ('igcrsr.xsh', 'igcrsr1.xsh', 'igcrsr9.xsh')}
+
+
 def picture_names(xb):
     """every picture name in the Xbox data folder's sheets (.xsh, loose or in a .big): sheet entries and atlas records"""
     import struct
@@ -121,6 +128,9 @@ def picture_names(xb):
     for dp, _, fs in os.walk(xb):
         for fn in fs:
             path = os.path.join(dp, fn)
+            rel = os.path.relpath(path, xb).replace(os.sep, '/').lower()
+            if rel not in PICTURE_SOURCES:
+                continue
             if fn.lower().endswith('.big'):
                 for n, b in read_big(path):
                     if n.lower().endswith('.xsh'): add(unpack(b))

@@ -550,7 +550,7 @@ def gui(root):
         except discs.DiscError as e:
             say(f"Stopped: {e}")
         except Exception:
-            say("Something went wrong:\n" + traceback.format_exc(limit=4))
+            say("Something went wrong:\n" + traceback.format_exc(limit=-6))
         finally:
             w.after(0, lambda: go.configure(state="normal"))
 
