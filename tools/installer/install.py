@@ -447,7 +447,7 @@ def gui(root):
         ("gamecube", "MVP 2005 GameCube disc, or your MVP05-Plus folder, or a 06 gc_icons folder or .zip",
          [("GameCube image or gc_icons zip", "*.iso *.gcm *.rvz *.gcz *.ciso *.wia *.zip"), ("All files", "*.*")],
          "gc_icons"),
-        ("xbox05", "MVP 2005 Xbox disc (needed with the 2005 GameCube disc)",
+        ("xbox05", "MVP 2005 Xbox disc (only needed with the GameCube disc above)",
          [("Xbox image", "*.iso *.xiso"), ("All files", "*.*")], True),
     ]
     folder_titles = {"xbox": "The folder with default.xbe", "ps2": "The ps2_icons folder",
@@ -486,12 +486,11 @@ def gui(root):
             gc_rows.grid_remove()
             vars_["gamecube"].set("")
             vars_["xbox05"].set("")
-    ttk.Checkbutton(frm, text="Experimental GameCube support: GameCube button art", variable=gc_on,
+    ttk.Checkbutton(frm, text="Experimental GameCube button art support", variable=gc_on,
                     command=gc_toggle).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 2))
     ttk.Label(gc_rows, foreground="#666", wraplength=560, justify="left", text=(
-        "There was no GameCube MVP 06, so its GameCube art is made from MVP 2005's: from the 2005 GameCube and Xbox "
-        "discs together (only the files it needs are read), or from an MVP05-Plus folder that has GameCube art. "
-        "It takes a minute or two.")).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 4))
+        "MVP 06 never came out on GameCube, so its GameCube buttons come from MVP 2005. Choose both 2005 discs, "
+        "or just an MVP05-Plus folder that already has GameCube art.")).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 4))
 
     bar = ttk.Progressbar(frm, length=440, mode="determinate", maximum=1.0)
     bar.grid(row=8, column=0, columnspan=3, sticky="we", pady=(8, 4))
