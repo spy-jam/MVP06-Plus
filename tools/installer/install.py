@@ -46,8 +46,73 @@ def game_dir():
 
 
 class Log:
-    def __init__(self, say=print, progress=None):
-        self.say, self.progress = say, progress
+    """Messages, and one progress bar across the whole install: the steps (plan) each get a share of the bar by how
+    long they usually take; status shows "Step 2 of 3: ..." with the time so far."""
+    def __init__(self, say=print, progress=None, status=None):
+        self.say, self.progress, self.status = say, progress, status
+        self.steps, self.at, self.label, self.started = [], -1, "", 0.0
+        self._timer = None
+
+    def plan(self, steps):
+        """steps: [(label, seconds it usually takes)]"""
+        self.steps, self.at = list(steps), -1
+
+    def step(self, label=None):
+        """On to the next step of the plan."""
+        import time
+        if self.at >= 0:
+            self.part(1.0)
+        self.at = min(self.at + 1, len(self.steps) - 1)
+        self.label = label or (self.steps[self.at][0] if self.steps else "")
+        self.started = time.monotonic()
+        self.part(0.0)
+        self.show_status()
+
+    def show_status(self):
+        if self.status and self.steps:
+            import time
+            t = int(time.monotonic() - self.started)
+            self.status(f"Step {self.at + 1} of {len(self.steps)}: {self.label}  ({t // 60}:{t % 60:02d})")
+
+    def part(self, f):
+        """This far (0 to 1) through the current step."""
+        if not self.progress:
+            return
+        if not self.steps or self.at < 0:
+            return self.progress(f)
+        total = sum(s for _, s in self.steps)
+        before = sum(s for _, s in self.steps[:self.at])
+        self.progress((before + min(max(f, 0.0), 1.0) * self.steps[self.at][1]) / total)
+
+    def timed(self, seconds):
+        """For work that can't say how far it is: the bar moves on by the time it usually takes, slowing as it nears the
+        end of the step's share so it never sits full while there's still work."""
+        log = self
+
+        class Timer:
+            def __enter__(self):
+                import threading, time, math
+                self.stop = threading.Event()
+
+                def tick():
+                    t0 = time.monotonic()
+                    while not self.stop.wait(0.25):
+                        t = time.monotonic() - t0
+                        f = 0.9 * t / seconds if t < seconds else 0.9 + 0.08 * (1 - math.exp(-(t - seconds) / seconds))
+                        log.part(f)
+                        log.show_status()
+                threading.Thread(target=tick, daemon=True).start()
+                return self
+
+            def __exit__(self, *a):
+                self.stop.set()
+        return Timer()
+
+    def finish(self, text):
+        if self.progress:
+            self.progress(1.0)
+        if self.status:
+            self.status(text)
 
 
 def need_space(folder, nbytes):
@@ -74,8 +139,7 @@ def install_xbox(src, root, log):
 
         def step(n):
             done[0] += n
-            if log.progress:
-                log.progress(done[0] / total)
+            log.part(done[0] / total)
 
         for p, (dest, _) in sorted(todo.items()):
             d.copy(p, dest, step)
@@ -85,6 +149,9 @@ def install_xbox(src, root, log):
 
 
 MANIFEST = "mvp06-plus-install.json"
+# about how long each step takes (seconds), for its share of the progress bar; the art steps can't report progress, so
+# the bar moves by these. Measured on a modest PC; a faster one just finishes early
+SECONDS = {"xbox": 40, "ps2": 50, "gc2005": 45, "gc06": 55}
 LAUNCHER_FILE = "mvp06-plus-launcher.json"  # the Launcher's own: where DolphinTool / chdman are, once chosen
 
 
@@ -187,7 +254,8 @@ def build_art(kind, src, root, log):
             discs.extract(d, discs.PS2_ART_FILES, tmp, upper=True)
         built = os.path.join(tmp, "ps2_icons")
         import make_ps2_icons06 as builder
-        run_builder(builder, [xbox_data, os.path.join(tmp, "DATA"), built], "ps2_icons")
+        with log.timed(SECONDS["ps2"]):
+            run_builder(builder, [xbox_data, os.path.join(tmp, "DATA"), built], "ps2_icons")
         put_icons(built, os.path.join(root, "ps2_icons"))
         log.say(f"ps2_icons made ({count_files(os.path.join(root, 'ps2_icons'))} files).")
     finally:
@@ -211,8 +279,10 @@ def build_gc_from_discs(gc_src, xbox05_src, root, log):
             discs.extract(d, discs.XBOX05_ART_FILES, os.path.join(tmp, "xb"))
         set2005 = os.path.join(tmp, "gc_icons_2005")
         import make_icons05 as builder
-        run_builder(builder, [os.path.join(tmp, "xb", "data"), os.path.join(tmp, "gc", "data"), set2005],
-                    "2005's gc_icons")
+        with log.timed(SECONDS["gc2005"]):
+            run_builder(builder, [os.path.join(tmp, "xb", "data"), os.path.join(tmp, "gc", "data"), set2005],
+                        "2005's gc_icons")
+        log.step("making GameCube button art for 06")
         build_gc_from_2005(set2005, root, log)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -226,7 +296,8 @@ def build_gc_from_2005(set2005, root, log):
         log.say("Making GameCube art for 06 from MVP 2005's GameCube art (this takes a minute)")
         built = os.path.join(tmp, "gc_icons")
         import make_gc_icons06 as builder
-        run_builder(builder, [xbox_data, set2005, built], "gc_icons")
+        with log.timed(SECONDS["gc06"]):
+            run_builder(builder, [xbox_data, set2005, built], "gc_icons")
         put_icons(built, os.path.join(root, "gc_icons"))
         log.say(f"gc_icons made ({count_files(os.path.join(root, 'gc_icons'))} files).")
     finally:
@@ -338,19 +409,37 @@ def run(root, xbox=None, gamecube=None, ps2=None, log=None, xbox05=None):
         raise discs.DiscError("choose your Xbox disc, and any PS2 disc or GameCube art")
     if gamecube and xbox05 and is_icons_source(gamecube):
         log.say("(the 2005 Xbox disc isn't needed with an MVP05-Plus folder or a gc_icons set: left out)")
+    steps = []
     if xbox:
+        steps.append(("copying the Xbox game", SECONDS["xbox"]))
+    if ps2:
+        steps.append(("copying the PS2 button art", 2) if is_icons_source(ps2) else
+                     ("making the PS2 button art", SECONDS["ps2"]))
+    if gamecube:
+        if not is_icons_source(gamecube):
+            steps.append(("making MVP 2005's GameCube button art", SECONDS["gc2005"]))
+            steps.append(("making GameCube button art for 06", SECONDS["gc06"]))
+        else:
+            steps.append(("GameCube button art", SECONDS["gc06"]))  # copied, or made from a 2005 set (the long one)
+    log.plan(steps)
+    if xbox:
+        log.step()
         install_xbox(xbox, root, log)
     if ps2:
+        log.step()
         (import_icons if is_icons_source(ps2) else build_art)("ps2", ps2, root, log)
     if gamecube:
+        log.step()
         if is_icons_source(gamecube):
             import_icons("gamecube", gamecube, root, log)
         else:
             build_gc_from_discs(gamecube, xbox05, root, log)
     if not os.path.isfile(os.path.join(root, "assets", "default.xbe")):
         log.say("The Xbox files aren't in assets yet: choose your Xbox disc too, the game needs it.")
+        log.finish("Done (the Xbox game still needs installing)")
     else:
         log.say("Done. Run MVP06.exe.")
+        log.finish("Done")
 
 
 # ---------------------------------------------------------------- the window
@@ -492,12 +581,15 @@ def gui(root):
         "MVP 06 never came out on GameCube, so its GameCube buttons come from MVP 2005. Choose both 2005 discs, "
         "or just an MVP05-Plus folder that already has GameCube art.")).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 4))
 
+    status_text = tk.StringVar(value="")
+    ttk.Label(frm, textvariable=status_text, foreground="#444").grid(row=8, column=0, columnspan=3, sticky="w",
+                                                                     pady=(8, 0))
     bar = ttk.Progressbar(frm, length=440, mode="determinate", maximum=1.0)
-    bar.grid(row=8, column=0, columnspan=3, sticky="we", pady=(8, 4))
+    bar.grid(row=9, column=0, columnspan=3, sticky="we", pady=(2, 4))
     out = tk.Text(frm, width=72, height=8, state="disabled", wrap="word", relief="flat", background="#f4f4f4")
-    out.grid(row=9, column=0, columnspan=3, pady=4)
+    out.grid(row=10, column=0, columnspan=3, pady=4)
     fb = ttk.Frame(frm)
-    fb.grid(row=10, column=0, columnspan=3, sticky="we", pady=(6, 0))
+    fb.grid(row=11, column=0, columnspan=3, sticky="we", pady=(6, 0))
     go = ttk.Button(fb, text="Install")
     go.pack(side="right")
     back = ttk.Button(fb, text="← Back")
@@ -535,9 +627,12 @@ def gui(root):
     def progress(x):
         w.after(0, lambda: bar.configure(value=x))
 
+    def status(t):
+        w.after(0, lambda: status_text.set(t))
+
     def work():
         try:
-            run(root, **{k: (v.get().strip() or None) for k, v in vars_.items()}, log=Log(say, progress))
+            run(root, **{k: (v.get().strip() or None) for k, v in vars_.items()}, log=Log(say, progress, status))
             w.after(0, lambda: bar.configure(value=1.0))
             import title_icon
             if title_icon.ensure(root, say):
