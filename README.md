@@ -1,6 +1,6 @@
 # MVP06-Plus
 
-MVP 06 NCAA Baseball on Windows, and on SteamOS through Proton, built on [Mad Dog's](#credits) PC port of the Original Xbox game. spy_jam's MVP06-Plus keeps Xbox controller support and adds PlayStation controller support with the PS2 release's full control layout and button labels, and experimental GameCube controller support. Includes a launcher for easy installation, also providing a save backup menu and display settings.
+MVP 06 NCAA Baseball on Windows, and on SteamOS (Linux) through Proton, built on [Mad Dog's](#credits) PC port of the Original Xbox game. spy_jam's MVP06-Plus keeps Xbox controller support and adds PlayStation controller support with the PS2 release's full control layout and button labels, and experimental GameCube controller support. Includes a launcher for easy installation, also providing a save backup menu and display settings.
 
 > **You need your own copy of the Xbox game.** No game files or game art are included. The Launcher builds what's needed from your own discs.
 
