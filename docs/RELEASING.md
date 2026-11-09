@@ -20,3 +20,7 @@
 `tools/Make-MVP06-Test-Release.cmd` does steps 1-5 privately in your Downloads folder: it unzips `MVP06-Plus-repo.zip`, copies your Xbox files in from your game folder, builds `MVP06.exe`, pushes to a **private** GitHub repository, runs the release tools build there and downloads it, packs the zip with Mad Dog's DLLs (from his `MVP06_Public-Beta` zip in Downloads), makes a **draft** release, and unzips the zip into `Downloads\MVP06-Plus-Beta-1` as a player would. It needs Git, the GitHub CLI (`gh`, signed in once with `gh auth login`) and Visual Studio's C++ and Clang tools. Run it again after changes: it reuses what's there and replaces the draft.
 
 For the real release, run `tools/Make-MVP06-Final-Release.cmd` instead: the same steps, but the draft is tagged `beta-1` and titled "MVP06-Plus Beta 1". It stays a draft until you press *Publish release* on GitHub (tick *Set as a pre-release*).
+
+## Fixing a published release without a new version
+
+`tools/Update-MVP06-Published-Release.cmd` rebuilds the release zip and replaces it on the published release (same version, page and notes; the zip's download count starts again). The tag keeps pointing at the commit it was made from. Running the Final script on a published release only updates the repository.

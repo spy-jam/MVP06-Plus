@@ -21,14 +21,17 @@ param(
     [string]$RepoName = "MVP06-Plus",
     [string]$Version = "Beta 1",
     [switch]$SkipBuild,             # use the MVP06.exe already built in the work folder
-    [switch]$Final                  # the real release's draft: tag beta-1, no "(test)" (still a draft until you publish)
+    [switch]$Final,                 # the real release's draft: tag beta-1, no "(test)" (still a draft until you publish)
+    [switch]$Refresh                # with -Final, on a release that's already published: rebuild and replace its zip,
+                                    # keeping the release itself (its page, notes and version)
 )
 # "Continue": Windows PowerShell 5.1 turns a program's stderr into a stopping error under "Stop" (git and gh write
 # progress there), so each step checks its own result, and the file steps below stop on errors by themselves
 $ErrorActionPreference = "Continue"
 $PSDefaultParameterValues = @{ "*-Item:ErrorAction" = "Stop"; "Expand-Archive:ErrorAction" = "Stop"; "Copy-Item:ErrorAction" = "Stop" }
 $env:MVP_NO_PAUSE = "1"
-$script:rewritten = $false   # Build-Source.cmd: don't wait for a key at the end
+$script:rewritten = $false
+$script:refresh = $false   # Build-Source.cmd: don't wait for a key at the end
 function Step($t) { Write-Host ""; Write-Host "== $t" -ForegroundColor Cyan }
 function Fail($t) { Write-Host ""; Write-Host "Stopped: $t" -ForegroundColor Red; throw "stopped" }
 function Need($cmd, $why) { if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { Fail "$cmd isn't installed ($why)" } }
@@ -188,7 +191,11 @@ try {
             # a release that's already published stays as it is (its downloads and link): this run only updates the
             # repository. A new release needs a new version name (-Version "Beta 2").
             $draft = (& gh release view $tag --json isDraft --jq ".isDraft" 2>$null)
-            if ($LASTEXITCODE -eq 0 -and "$draft".Trim() -eq "false") {
+            if ($LASTEXITCODE -eq 0 -and "$draft".Trim() -eq "false" -and $Refresh) {
+                $script:refresh = $true
+                Write-Host ""
+                Write-Host "$title is published: its zip will be rebuilt and replaced (the release stays as it is)"
+            } elseif ($LASTEXITCODE -eq 0 -and "$draft".Trim() -eq "false") {
                 Write-Host ""
                 Write-Host "Done: the repository on GitHub is up to date." -ForegroundColor Green
                 Write-Host "  $title is already published, so it was left as it is (no new build or release)."
@@ -273,13 +280,19 @@ try {
     }
     Write-Host "Made $zip"
 
-    Step "Draft release on GitHub (only you can see it)"
+    Step $(if ($script:refresh) { "Replacing the published release's zip" } else { "Draft release on GitHub (only you can see it)" })
     Push-Location $repo
     try {
-        & gh release view $tag *> $null
-        if ($LASTEXITCODE -eq 0) { & gh release delete $tag --yes | Out-Null }
-        & gh release create $tag $zip --draft --prerelease --target main --title $title --notes-file RELEASE-NOTES.md
-        if ($LASTEXITCODE -ne 0) { Fail "couldn't make the draft release" }
+        if ($script:refresh) {
+            & gh release upload $tag $zip --clobber
+            if ($LASTEXITCODE -ne 0) { Fail "couldn't replace the zip on $title" }
+            Write-Host "Replaced $(Split-Path $zip -Leaf) on the published $title"
+        } else {
+            & gh release view $tag *> $null
+            if ($LASTEXITCODE -eq 0) { & gh release delete $tag --yes | Out-Null }
+            & gh release create $tag $zip --draft --prerelease --target main --title $title --notes-file RELEASE-NOTES.md
+            if ($LASTEXITCODE -ne 0) { Fail "couldn't make the draft release" }
+        }
     } finally { Pop-Location }
 
     Step "Unzipping it as a player would"
@@ -291,8 +304,12 @@ try {
     Write-Host ""
     Write-Host "Done." -ForegroundColor Green
     Write-Host "  Player's folder: $player   (run MVP06-Plus-Launcher.exe there, then MVP06.exe)"
-    Write-Host "  Draft release:   https://github.com/$me/$RepoName/releases"
-    Write-Host "  The repository is private; publishing the draft or making the repository public is up to you."
+    if ($script:refresh) {
+        Write-Host "  Release:         https://github.com/$me/$RepoName/releases (its zip replaced)"
+    } else {
+        Write-Host "  Draft release:   https://github.com/$me/$RepoName/releases"
+        Write-Host "  Publishing the draft is up to you."
+    }
     Start-Process explorer.exe $player
 } catch {
     if ($_.Exception.Message -ne "stopped") { Write-Host ""; Write-Host "Stopped: $($_.Exception.Message)" -ForegroundColor Red }

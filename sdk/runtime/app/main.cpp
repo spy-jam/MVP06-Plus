@@ -42,9 +42,10 @@ bool g_asking_quit = false;   // the Esc "Quit?" box is up: the window losing fo
 void AskQuit(HWND hwnd) {
     if (g_asking_quit) return;
     g_asking_quit = true;
-    std::wstring text = std::wstring(L"Quit ") + kGame.short_title +
+    const wchar_t* name = L"MVP06-Plus";
+    std::wstring text = std::wstring(L"Quit ") + name +
                         L"?\n\nDon't quit while the game is saving: wait until it has finished.";
-    int answer = MessageBoxW(hwnd, text.c_str(), kGame.short_title, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+    int answer = MessageBoxW(hwnd, text.c_str(), name, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
     g_asking_quit = false;
     if (answer == IDYES) PostMessageW(hwnd, WM_CLOSE, 0, 0);
 }
