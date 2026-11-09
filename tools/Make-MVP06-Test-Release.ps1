@@ -166,9 +166,20 @@ try {
             if (-not (& git remote)) { & git remote add origin "https://github.com/$me/$RepoName.git" }
             & git push -u origin main 2>$null
             if ($LASTEXITCODE -ne 0) {
-                if (-not $script:rewritten) { Fail "couldn't push (if the GitHub one has changes of its own, sort that out first)" }
-                Write-Host "Replacing the history on GitHub with the rewritten one"
-                & git push -u --force-with-lease origin main
+                # GitHub's main isn't behind this one: look at what it has. If every change on it is already here
+                # (its commits were only rewritten, as when signatures or the email changed), replace it; if it has
+                # changes of its own (an edit made on the website, say), stop and name them.
+                & git fetch -q origin main
+                if ($LASTEXITCODE -ne 0) { Fail "couldn't read the GitHub repository" }
+                $theirs = (& git rev-parse FETCH_HEAD).Trim()
+                $own = @(& git cherry HEAD $theirs | Where-Object { $_ -like "+*" })
+                if ($own.Count -gt 0) {
+                    Write-Host "GitHub has changes that aren't in this folder:"
+                    foreach ($c in $own) { Write-Host ("  " + (& git log -1 --format="%h %s (%ad)" --date=short $c.Substring(2))) }
+                    Fail "bring those into the repo zip first (send the list to Claude), so they aren't lost"
+                }
+                Write-Host "Replacing the history on GitHub with the rewritten one (no changes of its own are lost)"
+                & git push -u "--force-with-lease=main:$theirs" origin main
                 if ($LASTEXITCODE -ne 0) { Fail "couldn't push the rewritten history" }
             }
         }
