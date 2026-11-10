@@ -199,7 +199,7 @@ try {
                 Write-Host ""
                 Write-Host "Done: the repository on GitHub is up to date." -ForegroundColor Green
                 Write-Host "  $title is already published, so it was left as it is (no new build or release)."
-                Write-Host "  For a new release, run with a new version: Make-Final-Release.cmd -Version ""Beta 2"""
+                Write-Host "  For a new release, run with a new version: Make-MVP06-Final-Release.cmd -Version ""Beta 2"""
                 return
             }
         }
