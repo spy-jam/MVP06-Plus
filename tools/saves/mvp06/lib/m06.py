@@ -9,7 +9,12 @@ stream stores some fields with C struct padding where the Xbox stream writes the
                                     Xbox [u32 id][12 B short name][136 B]
   two lists   [u8 flag][3 pad on PS2][u32 n][n x u32]
   schedule    one 16 B record: PS2 (a, b, c, d) = Xbox (c, a, b, d); 18 more trailing bytes on PS2 (zero here)
-Everything else is copied byte for byte."""
+Everything else is copied byte for byte.
+
+A roster save (both platforms 0xF7800 B) is a dynasty's section 2 on its own: the same stream from the word after
+marker 1 to the next marker, then one closing marker. So the conference and list rules apply at offsets 4 lower
+(checked on the default rosters saved on each platform: after converting, only the randomly generated player names
+differ)."""
 import struct, re
 
 MK = b'\x0d\xf0\xef\xbe'
@@ -22,6 +27,10 @@ CONF_REL, CONF_N, CONF_LEN = 0x12d4, 16, 0x98
 LIST1_REL = 0x1b1c7
 # offset of the reordered record relative to marker 2, and the common prefix of the schedule section
 SCHED_REC_REL = 0x195a0
+
+
+ROSTER_PAYLOAD_LEN = 0xF7800
+R_CONF, R_LIST1 = CONF_REL - 4, LIST1_REL - 4
 
 
 class Unsupported(Exception):
@@ -148,3 +157,31 @@ def x2p(X, Pt):
     out += tail + bytes(ps_len - SCHED_REC_REL - 16 - len(tail))
     out += X[mx[3]:mx[6]]
     return _finish(out, PS2_PAYLOAD_LEN)
+
+
+# ------------------------------------------------------------------ roster saves
+def roster_end(d):
+    """Offset of a roster payload's closing marker (checked: its length word, and filler after it)."""
+    if len(d) != ROSTER_PAYLOAD_LEN:
+        raise Unsupported('not a roster payload')
+    m = [x.start() for x in re.finditer(re.escape(MK), d)]
+    if len(m) != 1 or struct.unpack_from('<I', d, m[0] + 4)[0] != m[0] + 4:
+        raise Unsupported('roster stream has no closing marker')
+    return m[0]
+
+
+def roster_p2x(P):
+    """P: PS2 roster payload. Returns the Xbox roster payload."""
+    end = roster_end(P)
+    out = bytearray(P[:R_CONF])
+    for k in range(CONF_N):
+        out += conf_p2x(P[R_CONF + CONF_LEN * k:R_CONF + CONF_LEN * (k + 1)])
+    o = R_CONF + CONF_LEN * CONF_N
+    out += P[o:R_LIST1]
+    l1, o = list_p2x(P, R_LIST1)
+    l2, o = list_p2x(P, o)
+    out += l1 + l2
+    if o > end:
+        raise Unsupported('roster lists run past the end of the stream')
+    out += P[o:end]
+    return _finish(out, ROSTER_PAYLOAD_LEN)

@@ -1,18 +1,18 @@
 # MVP06-Plus Beta 2
 
-Bring your dynasty over from the PS2, update from the Launcher, and a tidier Launcher, from MVP05-Plus Beta 2's work.
+Bring your rosters and dynasties over from the PS2, update from the Launcher, and a tidier Launcher, from MVP05-Plus Beta 2's work.
 
 ## Highlights
-- **Import dynasties** (*Saves → Import a save…*): a dynasty from the PS2 or another Xbox, converted into one of your MVP06-Plus dynasty saves. Your save is backed up first.
+- **Import rosters and dynasties** (*Saves → Import a save…*): from the PS2 or another Xbox, converted into one of your MVP06-Plus saves. Your save is backed up first.
 - **Updates from the Launcher** (*Settings → Updates*): check, install and undo, from this version on.
 - **Low latency** (*Settings*, off by default): less delay between a button and the screen.
 
-## Import dynasties
-*Saves → Your saves → Import a save…*: choose the dynasty, pick which of your dynasty saves it goes into (it's backed up first, in *Saves → Backups*), and import. Start a dynasty in the game and save it once, so you have a dynasty save to import into.
+## Import rosters and dynasties
+*Saves → Your saves → Import a save…*: choose the roster or dynasty, pick which of your saves of the same kind it goes into (it's backed up first, in *Saves → Backups*), and import. Save a roster, or start a dynasty and save it, in the game first, so you have a save to import into.
 - **PS2:** from a `.psu`, a PCSX2 memory card (`.ps2`: you pick the save on it), or the `.sav` from a save.
 - **Xbox:** from another Xbox (its `data.dat`).
 
-PS2 dynasty conversion is **spy_jam**'s.
+PS2 roster and dynasty conversion is **spy_jam**'s.
 
 ## Launcher
 - **Updates** (*Settings → Updates*): shows your version, checks GitHub for a newer release (also when the Launcher opens, unless you turn that off), shows what's new and installs it: the program files only, checked against the release's manifest. Your game files, saves, backups, button art and shader cache are never touched, and your settings are kept, with new options added. *Back to …* undoes the last update.

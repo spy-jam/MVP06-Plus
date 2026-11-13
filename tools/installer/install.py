@@ -967,7 +967,7 @@ def choose_card_save(parent, tk, ttk, found):
     win.grab_set()
     f = ttk.Frame(win, padding=12)
     f.grid()
-    ttk.Label(f, text="The memory card has more than one MVP 06 dynasty. Which one?").grid(sticky="w")
+    ttk.Label(f, text="The memory card has more than one MVP 06 save. Which one?").grid(sticky="w")
     lb = tk.Listbox(f, height=min(8, len(found)), width=56, exportselection=False)
     for folder, name, what, _ in found:
         lb.insert("end", f"{name}: {what}   ({folder})")
@@ -986,26 +986,27 @@ def choose_card_save(parent, tk, ttk, found):
 
 
 def import_tool(frm, root, tk, ttk):
-    """Import a save: a dynasty from the PS2 or another Xbox written into one of your dynasty saves here (backed up
-    first), so it plays in MVP06-Plus. The PS2 conversion is spy_jam's MVP 06 converter."""
+    """Import a save: a roster or dynasty from the PS2 or another Xbox written into one of your saves of the same kind
+    here (backed up first), so it plays in MVP06-Plus. The PS2 conversion is spy_jam's MVP 06 converter."""
     import dynasty06 as DY
     import ps2card as PC
+    import rosters06 as RO
     import saves06 as S
     from tkinter import filedialog, messagebox
 
     frm.columnconfigure(1, weight=1)
     ttk.Label(frm, foreground="#666", wraplength=540, justify="left", text=(
-        "Brings a dynasty from another version of MVP 06 into this one. It works with:\n"
-        "\u2022  a dynasty from the PS2 (a .psu, a PCSX2 memory card .ps2, or the .sav file from a save)\n"
-        "\u2022  a dynasty from another Xbox (its data.dat)\n"
-        "The dynasty goes into one of your own dynasty saves, which is backed up first.")).grid(
+        "Brings a roster or dynasty from another version of MVP 06 into this one. It works with:\n"
+        "\u2022  saves from the PS2 (a .psu, a PCSX2 memory card .ps2, or the .sav file from a save)\n"
+        "\u2022  saves from another Xbox (its data.dat)\n"
+        "It goes into one of your own saves of the same kind, which is backed up first.")).grid(
         row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
     def step(row, n, text):
         ttk.Label(frm, text=f"{n}.", font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="nw", padx=(0, 8))
         ttk.Label(frm, text=text, font=("Segoe UI", 9, "bold")).grid(row=row, column=1, sticky="w")
 
-    step(2, 1, "Choose the dynasty to bring in")
+    step(2, 1, "Choose the roster or dynasty to bring in")
     line = ttk.Frame(frm)
     line.grid(row=3, column=1, sticky="w", pady=(4, 12))
     pick_b = ttk.Button(line, text="Choose a save...")
@@ -1013,7 +1014,7 @@ def import_tool(frm, root, tk, ttk):
     src_text = ttk.Label(line, text="", foreground="#666")
     src_text.pack(side="left", padx=10)
 
-    step(4, 2, "Pick which of your dynasty saves it replaces")
+    step(4, 2, "Pick which of your saves it replaces")
     box = ttk.Combobox(frm, state="readonly", width=48)
     box.grid(row=5, column=1, sticky="w", pady=(4, 2))
     hint = ttk.Label(frm, foreground="#666", wraplength=520, justify="left")
@@ -1027,8 +1028,10 @@ def import_tool(frm, root, tk, ttk):
     note = ttk.Label(frm, wraplength=520, justify="left")
     note.grid(row=9, column=1, sticky="w", pady=(8, 0))
     ttk.Label(frm, foreground="#888", wraplength=540, justify="left", text=(
-        "PS2 dynasty conversion by spy_jam.")).grid(row=10, column=0, columnspan=2, sticky="w", pady=(16, 0))
+        "PS2 roster and dynasty conversion by spy_jam.")).grid(row=10, column=0, columnspan=2, sticky="w", pady=(16, 0))
     picked, targets = {}, []
+    KINDS = {"dynasty": (DY, DY.DynastyError), "roster": (RO, RO.RosterError)}
+    ERRORS = (DY.DynastyError, RO.RosterError)
 
     def say(text, colour="#555"):
         note.configure(text=text, foreground=colour)
@@ -1039,7 +1042,8 @@ def import_tool(frm, root, tk, ttk):
     def refresh(*_):
         old = box.get()
         targets.clear()
-        targets.extend(x for x in S.list_saves(root) if x["size"] == DY.XB_SIZE)
+        kind = picked.get("kind", "dynasty")
+        targets.extend(x for x in S.list_saves(root) if x["size"] == KINDS[kind][0].XB_SIZE)
         labels = [f"{x['name']} ({when_text(x['when'])})" for x in targets]
         box.configure(values=labels, state="readonly" if labels else "disabled")
         if old in labels:
@@ -1049,17 +1053,21 @@ def import_tool(frm, root, tk, ttk):
         else:
             box.set("")
         if not picked.get("what"):
-            hint.configure(text="Choose a dynasty first: then your dynasty saves are listed here.", foreground="#666")
+            hint.configure(text="Choose a save first: then your saves of the same kind are listed here.",
+                           foreground="#666")
         elif labels:
-            hint.configure(text="That dynasty save is backed up first. The dynasty keeps the name of the save it goes "
+            hint.configure(text=f"That {kind} save is backed up first. The {kind} keeps the name of the save it goes "
                                 "into.", foreground="#666")
+        elif kind == "roster":
+            hint.configure(text="You don't have a roster save yet. In the game, save a roster, then come back here.",
+                           foreground="#a33")
         else:
             hint.configure(text="You don't have a dynasty save yet. In the game, start a dynasty and save it, then "
                                 "come back here.", foreground="#a33")
         ready()
 
     def pick():
-        p = filedialog.askopenfilename(parent=frm, title="A dynasty from another MVP 06", filetypes=[
+        p = filedialog.askopenfilename(parent=frm, title="A roster or dynasty from another MVP 06", filetypes=[
             ("MVP 06 saves", "*.psu *.ps2 *.sav *.dat"), ("All files", "*.*")])
         if not p:
             return
@@ -1068,30 +1076,40 @@ def import_tool(frm, root, tk, ttk):
         try:
             with open(p, "rb") as f:
                 data = f.read()
-            if data[:28] == PC.MAGIC:  # a PS2 memory card: its MVP 06 dynasties
+            if data[:28] == PC.MAGIC:  # a PS2 memory card: its MVP 06 rosters and dynasties
                 found, refused = [], []
                 for folder, files in PC.Card(data).saves().items():
                     for name, b in files.items():
-                        if len(b) == DY.PS2_SAV_SIZE:
-                            try:
-                                found.append((folder, name, "dynasty", DY.read_ps2(b)))
-                            except DY.DynastyError as e:
-                                refused.append(str(e))
+                        for kind, (M, err) in KINDS.items():
+                            if len(b) == M.PS2_SAV_SIZE:
+                                try:
+                                    found.append((folder, name, kind, M.read_ps2(b)))
+                                except err as e:
+                                    refused.append(str(e))
                 if not found:
-                    raise DY.DynastyError(refused[0] if refused else "that memory card has no MVP 06 dynasty on it")
+                    raise DY.DynastyError(refused[0] if refused else
+                                          "that memory card has no MVP 06 roster or dynasty on it")
                 which = found[0] if len(found) == 1 else choose_card_save(frm, tk, ttk, found)
                 if not which:
                     return
-                picked.update(ps2=which[3], what=f"PS2 dynasty \"{which[3]['name']}\" ({which[1]} on the card)")
+                picked.update(kind=which[2], ps2=which[3],
+                              what=f"PS2 {which[2]} \"{which[3]['name']}\" ({which[1]} on the card)")
             elif len(data) == DY.XB_SIZE:
                 DY.read_xbox(data)
-                picked.update(xbox=data, what="Xbox dynasty")
+                picked.update(kind="dynasty", xbox=data, what="Xbox dynasty")
+            elif len(data) == RO.XB_SIZE:
+                RO.read_xbox(data)
+                picked.update(kind="roster", xbox=data, what="Xbox roster")
             elif DY.is_ps2(data):
                 d = DY.read_ps2(data)
-                picked.update(ps2=d, what=f"PS2 dynasty \"{d['name']}\"")
+                picked.update(kind="dynasty", ps2=d, what=f"PS2 dynasty \"{d['name']}\"")
+            elif RO.is_ps2(data):
+                d = RO.read_ps2(data)
+                picked.update(kind="roster", ps2=d, what=f"PS2 roster \"{d['name']}\"")
             else:
-                raise DY.DynastyError("not an MVP 06 dynasty save (PS2 .psu, .ps2 card or .sav, or an Xbox data.dat)")
-        except (OSError, DY.DynastyError, PC.CardError) as e:
+                raise DY.DynastyError("not an MVP 06 roster or dynasty save (PS2 .psu, .ps2 card or .sav, or an "
+                                      "Xbox data.dat)")
+        except (OSError, PC.CardError) + ERRORS as e:
             src_text.configure(text=f"{os.path.basename(p)}: can't be used ({e})", foreground="#a33")
             return refresh()
         picked["path"] = p
@@ -1103,7 +1121,7 @@ def import_tool(frm, root, tk, ttk):
         if not picked.get("what") or not s:
             return
         if not messagebox.askyesno("Import a save", (
-                f"Replace the dynasty in \"{s['name']}\" with the {picked['what']} from "
+                f"Replace the {picked['kind']} in \"{s['name']}\" with the {picked['what']} from "
                 f"{os.path.basename(picked['path'])}?\n\n\"{s['name']}\" is backed up first (Saves > Backups)."),
                 parent=frm):
             return
@@ -1117,13 +1135,14 @@ def import_tool(frm, root, tk, ttk):
                     raise DY.DynastyError("close MVP06.exe first: the game keeps its saves open while it runs")
                 with open(dat, "rb") as f:
                     mine = f.read()
-                out = DY.xbox_to_xbox(picked["xbox"], mine) if "xbox" in picked else DY.ps2_to_xbox(picked["ps2"], mine)
-                S.backup_folder(root, s["folder"], "importing a dynasty")
+                M = KINDS[picked["kind"]][0]
+                out = M.xbox_to_xbox(picked["xbox"], mine) if "xbox" in picked else M.ps2_to_xbox(picked["ps2"], mine)
+                S.backup_folder(root, s["folder"], f"importing a {picked['kind']}")
                 with open(dat + ".new", "wb") as f:
                     f.write(out)
                 os.replace(dat + ".new", dat)
                 msg = (f"Done. Load \"{s['name']}\" in the game. The old save is in Saves > Backups.", "#1a7f37")
-            except (OSError, DY.DynastyError) as e:
+            except (OSError,) + ERRORS as e:
                 msg = (f"Nothing was changed: {e}.", "#a33")
             frm.after(0, lambda: (say(*msg), refresh()))
         threading.Thread(target=work, daemon=True).start()

@@ -43,3 +43,11 @@ sit inside key lists and depend on content. Both containers verify.
   anything the season fills in) may use more padded fields. A mid-season save from each platform is needed to
   check this.
 - The dynasty keeps the template's name.
+
+## Roster saves
+A roster save is 0xF7800 B of payload on both platforms (PS2 .sav 1,013,960 B with its 0xC8 header; Xbox data.dat
+1,014,024 B). Its stream is a dynasty's section 2 on its own: it starts at the word after the dynasty's marker 1 and
+ends with one closing marker (0xBEEFF00D, then its own offset + 4), then filler. The conferences sit at 0x12D0 and the
+two lists at 0x1B1C3 (the dynasty offsets less 4), with the same PS2/Xbox differences. Checked on the default rosters
+saved on each platform: after `roster_p2x`, the only bytes that differ are the randomly generated player names
+(0x253FD to 0x675EF). The PS2 save had 16 stale bytes inside its trailing filler (0xF72D0), which aren't data.

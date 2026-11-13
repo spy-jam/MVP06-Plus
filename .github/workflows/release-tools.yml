@@ -24,7 +24,7 @@ jobs:
         run: >
           pyinstaller --onefile --windowed --name MVP06-Plus-Launcher
           --paths tools/installer --paths tools/gc_layout --paths tools/ps2_layout --paths tools/saves --paths tools/saves/mvp06/lib
-          --hidden-import make_icons --hidden-import make_ps2_icons --hidden-import make_icons05 --hidden-import make_gc_icons06 --hidden-import make_ps2_icons06 --hidden-import cv2 --hidden-import scipy.ndimage --hidden-import backups --hidden-import settings --hidden-import title_icon --hidden-import shortcuts --hidden-import controllers --hidden-import updater --hidden-import carryover --hidden-import gamepad_nav --hidden-import saves06 --hidden-import dynasty06 --hidden-import ps2card --hidden-import m06 --hidden-import m06files --hidden-import gc_checksums
+          --hidden-import make_icons --hidden-import make_ps2_icons --hidden-import make_icons05 --hidden-import make_gc_icons06 --hidden-import make_ps2_icons06 --hidden-import cv2 --hidden-import scipy.ndimage --hidden-import backups --hidden-import settings --hidden-import title_icon --hidden-import shortcuts --hidden-import controllers --hidden-import updater --hidden-import carryover --hidden-import gamepad_nav --hidden-import saves06 --hidden-import dynasty06 --hidden-import rosters06 --hidden-import ps2card --hidden-import m06 --hidden-import m06files --hidden-import gc_checksums
           --add-data "tools/installer/easter/*.png;easter"
           --collect-submodules iconlib
           tools/installer/install.py
