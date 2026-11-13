@@ -1,6 +1,6 @@
 # MVP06-Plus
 
-MVP 06 NCAA Baseball on Windows, and on SteamOS (Linux) through Proton, built on [Mad Dog's](#credits) PC port of the Original Xbox game. spy_jam's MVP06-Plus keeps Xbox controller support and adds PlayStation controller support with the PS2 release's full control layout and button labels, and experimental GameCube controller support. Includes a launcher for easy installation, also providing a save backup menu and display settings.
+MVP 06 NCAA Baseball on Windows, and on SteamOS (Linux) through Proton, built on [Mad Dog's](#credits) PC port of the Original Xbox game. spy_jam's MVP06-Plus keeps Xbox controller support and adds PlayStation controller support with the PS2 release's full control layout and button labels, and experimental GameCube controller support. Includes a launcher for easy installation, dynasty imports from the PS2, save backups, display settings and updates.
 
 > **You need your own copy of the Xbox game.** No game files or game art are included. The Launcher builds what's needed from your own discs.
 
@@ -9,7 +9,8 @@ MVP 06 NCAA Baseball on Windows, and on SteamOS (Linux) through Proton, built on
 * **PlayStation controllers** with the PS2 release's full control layout and stick handling, analog button pressure and rumble.
 * **GameCube controllers (experimental)** through a Wii U / Switch adapter: all 4 ports and rumble, with GameCube stick deadzones, C-stick and analog trigger handling. There was no GameCube MVP 06, so the layout follows MVP 2005's GameCube release as closely as 06 allows.
 * **Button art to match your controller**: PS2 buttons in menus and in-game, made from your own MVP 06 PS2 disc, and GameCube buttons made from MVP 2005's GameCube art (both optional).
-* **MVP06-Plus Launcher**: install from your discs, launch the game, restore save backups, adjust display settings.
+* **Import dynasties** from the PS2 or another Xbox, converted into your MVP06-Plus saves.
+* **MVP06-Plus Launcher**: install from your discs, launch the game, import and restore saves, adjust display settings, and update MVP06-Plus.
 * **Fixes**: a shader cache to prevent mid-game stutter, and SteamOS support through Proton.
 * **Save backups**: a full save backup menu in the Launcher. Your saves are backed up automatically when the game starts, keeping the latest 30 backups by default, and you can view and restore them in the Launcher.
 
@@ -23,9 +24,13 @@ MVP 06 NCAA Baseball on Windows, and on SteamOS (Linux) through Proton, built on
 
 Button art follows the controller connected when the game starts. Without the art sets, PlayStation and GameCube controllers still use their own control layouts, with Xbox buttons shown.
 
+## Coming from Beta 1 or Mad Dog's MVP06
+
+Unzip MVP06-Plus into a new folder and open the Launcher. It asks to bring over your game, saves and settings, so you don't need your discs again. Said no? Press **Ctrl+Shift+B** in the Launcher to be asked again.
+
 ## Install
 
-1. Download `MVP06-Plus-Beta-1.zip` from [Releases](../../releases) and unzip it anywhere. Everything stays in that folder: nothing goes into Program Files or the registry, and desktop shortcuts are only made if you ask.
+1. Download the latest `MVP06-Plus` zip from [Releases](../../releases) and unzip it anywhere. Everything stays in that folder: nothing goes into Program Files or the registry, and desktop shortcuts are only made if you ask.
 2. Run `MVP06-Plus-Launcher.exe` and choose your discs:
 
    * **Xbox** (required): a Redump `.iso`, `.xiso`, or a folder of extracted files.
@@ -59,8 +64,8 @@ sh -c 'B="/home/deck/Games/MVP06-Plus/gcbridge"; chmod +x "$B"; "$B" & exec "$@"
 ## MVP06-Plus Launcher
 
 * **Install**, which becomes **Play** once the game's installed: your discs in, then what's installed (checked each start), **Launch MVP 06**, and which controllers Windows sees right now, including whether the GameCube adapter has the WinUSB driver it needs.
-* **Saves**: *Current saves*, and *Backups* by date. Restore single saves or a whole date; your saves become a backup first, so a restore can be undone.
-* **Settings**: display mode, aspect ratio (16:9, or 4:3 with black bars at the sides), resolution (default: fullscreen at your desktop's resolution), render scale, frame rate cap, texture filtering, VSync, Xbox 720p mode; and desktop shortcuts for the game ("MVP 06 Plus") and the Launcher, if you want them.
+* **Saves**: *Your saves*, with *Import a save…* for a dynasty from the PS2 or another Xbox; and *Backups* by date. Restore single saves or a whole date; your saves become a backup first, so a restore can be undone.
+* **Settings**: display mode, aspect ratio (16:9, or 4:3 with black bars at the sides), resolution (default: fullscreen at your desktop's resolution), render scale, frame rate cap, texture filtering, VSync, low latency, Xbox 720p mode; desktop shortcuts for the game ("MVP 06 Plus") and the Launcher, if you want them; and *Updates*: check for a new release, install it, or go back to the version before.
 
 Everything is also in `mvp06-settings.toml`. Plus adds `gamecube_layout`, `gamecube_icons`, `playstation_layout`, `playstation_icons` (all on) and `save_backups` (30).
 

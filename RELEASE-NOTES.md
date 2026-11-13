@@ -1,3 +1,38 @@
+# MVP06-Plus Beta 2
+
+Bring your dynasty over from the PS2, update from the Launcher, and a tidier Launcher, from MVP05-Plus Beta 2's work.
+
+## Highlights
+- **Import dynasties** (*Saves → Import a save…*): a dynasty from the PS2 or another Xbox, converted into one of your MVP06-Plus dynasty saves. Your save is backed up first.
+- **Updates from the Launcher** (*Settings → Updates*): check, install and undo, from this version on.
+- **Low latency** (*Settings*, off by default): less delay between a button and the screen.
+
+## Import dynasties
+*Saves → Your saves → Import a save…*: choose the dynasty, pick which of your dynasty saves it goes into (it's backed up first, in *Saves → Backups*), and import. Start a dynasty in the game and save it once, so you have a dynasty save to import into.
+- **PS2:** from a `.psu`, a PCSX2 memory card (`.ps2`: you pick the save on it), or the `.sav` from a save.
+- **Xbox:** from another Xbox (its `data.dat`).
+
+PS2 dynasty conversion is **spy_jam**'s.
+
+## Launcher
+- **Updates** (*Settings → Updates*): shows your version, checks GitHub for a newer release (also when the Launcher opens, unless you turn that off), shows what's new and installs it: the program files only, checked against the release's manifest. Your game files, saves, backups, button art and shader cache are never touched, and your settings are kept, with new options added. *Back to …* undoes the last update.
+- **A tidier layout:** *Saves* switches between your saves and backups, and *Settings* has desktop shortcuts and updates side by side.
+- **Your game's title art** on the *Play* tab, from your own Xbox disc.
+- **Controllers:** an Xbox-style controller, or a GameCube controller on the adapter (with its WinUSB driver), moves around the Launcher: d-pad or stick, A presses, B goes back, LB / RB (L / R) switch tabs, Start launches the game from *Play*.
+- **Bring over an older install:** the first time the Launcher opens in a new folder (or on Ctrl+Shift+B), it offers to bring MVP06-Plus Beta 1 or Mad Dog's MVP06 over: its game, saves and settings, copied or moved in.
+
+## Game
+- **Low latency** (*Settings*, off by default): one finished frame waits for the screen instead of up to three, for up to about two frames (~33 ms at 60 Hz) less delay between a button and the screen. It can stutter on a slower PC, so it starts off.
+
+## Fixed
+- The Launcher's *Settings* no longer drops the note after a text setting (such as `display_mode`) in `mvp06-settings.toml`.
+
+## Coming from Beta 1 or Mad Dog's MVP06
+Unzip MVP06-Plus into a new folder and open the Launcher. It asks to bring over your game, saves and settings, so you don't need your discs again. Said no? Press **Ctrl+Shift+B** in the Launcher to be asked again. From Beta 2 on, *Settings → Updates* updates MVP06-Plus for you.
+
+## Thanks
+**Mad Dog** for MVP06, and **TGP482** for XboxXBERecomp.
+
 # MVP06-Plus Beta 1
 
 First release of MVP06-Plus by spy_jam, built on Mad Dog's MVP06 Public Beta 1 (made with TGP482's XboxXBERecomp).
