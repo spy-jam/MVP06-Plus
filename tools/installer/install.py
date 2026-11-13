@@ -530,12 +530,12 @@ def gui(root):
         dog.configure(image=dog.picture)
         dog.place(relx=1.0, rely=1.0, x=-12, y=-12, anchor="se")
         dog.lift()
-        for x in (pad_adapter, pad_others):
-            x.configure(wraplength=380)
+        for x in (pad_adapter, pad_others, art_note):  # short of the picture (a wide one is 200 px)
+            x.configure(wraplength=360)
 
     def hide_dog(*_):
         dog.place_forget()
-        for x in (pad_adapter, pad_others):
+        for x in (pad_adapter, pad_others, art_note):
             x.configure(wraplength=520)
 
     art.bind("<Double-Button-1>", show_dog)
@@ -569,9 +569,9 @@ def gui(root):
     pad_adapter.grid(row=9, column=0, columnspan=2, sticky="w")
     pad_others = ttk.Label(ready, text="", wraplength=520, justify="left")
     pad_others.grid(row=10, column=0, columnspan=2, sticky="w")
-    ttk.Label(ready, foreground="#777", wraplength=520, justify="left", text=(
-        "Button art follows the controller connected when the game starts.")).grid(
-        row=11, column=0, columnspan=2, sticky="w", pady=(4, 0))
+    art_note = ttk.Label(ready, foreground="#777", wraplength=520, justify="left", text=(
+        "Button art follows the controller connected when the game starts."))
+    art_note.grid(row=11, column=0, columnspan=2, sticky="w", pady=(4, 0))
     colours = {"ok": "#1a7f37", "warn": "#b35900", "none": "#777"}
 
     def watch_pads():
