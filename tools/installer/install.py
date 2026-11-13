@@ -27,14 +27,15 @@ import threading
 import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-for sub in ("gc_layout", "ps2_layout"):  # the art builders (bundled beside this when frozen)
+for sub in ("gc_layout", "ps2_layout", "saves", os.path.join("saves", "mvp05", "lib")):  # bundled beside this when frozen
     for base in (os.path.join(HERE, "..", sub), os.path.join(getattr(sys, "_MEIPASS", HERE), sub)):
         if os.path.isdir(base) and base not in sys.path:
             sys.path.insert(0, base)
 
 import discs  # noqa: E402
 
-VERSION = "Beta 1"
+VERSION = "Beta 2"
+VERSION = os.environ.get("MVP06_TEST_VERSION") or VERSION  # Test-Updater: pretend to be older
 GAME = "MVP06-Plus"
 
 
@@ -172,6 +173,26 @@ def remember_tool(root, tool, path):
     except (OSError, ValueError):
         data = {}
     data.setdefault("tools", {})[tool] = path
+    with open(p, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def launcher_option(root, key, default=None):
+    try:
+        with open(os.path.join(root, LAUNCHER_FILE)) as f:
+            return json.load(f).get(key, default)
+    except (OSError, ValueError):
+        return default
+
+
+def set_launcher_option(root, key, value):
+    p = os.path.join(root, LAUNCHER_FILE)
+    try:
+        with open(p) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        data = {}
+    data[key] = value
     with open(p, "w") as f:
         json.dump(data, f, indent=2)
 
@@ -473,7 +494,8 @@ def gui(root):
     ready = ttk.Frame(tab)
     ttk.Label(ready, text=f"{GAME} is installed", font=("Segoe UI", 12, "bold")).grid(
         row=0, column=0, columnspan=2, sticky="w")
-    ttk.Label(ready, text=root, foreground="#555").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 10))
+    ttk.Label(ready, text=root, foreground="#555", wraplength=400, justify="left").grid(
+        row=1, column=0, columnspan=2, sticky="w", pady=(0, 10))
     lines = {}
     for i, (k, label) in enumerate((("xbox", "Xbox game"), ("gamecube", "GameCube button art"),
                                     ("ps2", "PS2 button art"))):
@@ -481,8 +503,59 @@ def gui(root):
         text = ttk.Label(ready)
         text.grid(row=2 + i, column=0, columnspan=2, sticky="w", pady=1)
         lines[k] = (mark, text, label)
+    # the game's own title art from your Xbox disc (default.xbe's title image), in the top right corner
+    art = ttk.Label(ready)
+    art.grid(row=0, column=2, rowspan=6, sticky="ne", padx=(12, 0))
+    ready.columnconfigure(1, weight=1)
+    # double-click the title art: one of spy_jam's dogs, in the empty corner under it (click it to put it away)
+    # (laid over the corner, so nothing else on the tab moves; the controller lines wrap short of it meanwhile)
+    dog = ttk.Label(ready.master, cursor="hand2")
+
+    def show_dog(*_):
+        import random
+        folder = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "easter")
+        try:
+            files = sorted(f for f in os.listdir(folder) if f.endswith(".png"))
+        except OSError:
+            return
+        if not files:
+            return
+        last = getattr(dog, "file", None)
+        pick = random.choice([f for f in files if f != last] or files)
+        try:
+            dog.picture = tk.PhotoImage(file=os.path.join(folder, pick))
+        except tk.TclError:
+            return
+        dog.file = pick
+        dog.configure(image=dog.picture)
+        dog.place(relx=1.0, rely=1.0, x=-12, y=-12, anchor="se")
+        dog.lift()
+        for x in (pad_adapter, pad_others):
+            x.configure(wraplength=380)
+
+    def hide_dog(*_):
+        dog.place_forget()
+        for x in (pad_adapter, pad_others):
+            x.configure(wraplength=520)
+
+    art.bind("<Double-Button-1>", show_dog)
+    dog.bind("<Button-1>", hide_dog)
+
+    def show_art():
+        if getattr(art, "picture", None):
+            return
+        try:
+            import base64
+            with open(os.path.join(root, "assets", "default.xbe"), "rb") as f:
+                im = title_icon.title_image(f.read())
+            buf = io.BytesIO()
+            im.save(buf, format="PNG")
+            art.picture = tk.PhotoImage(data=base64.b64encode(buf.getvalue()))
+            art.configure(image=art.picture)
+        except Exception:  # no picture is fine: the rest of the tab is as it was
+            pass
     rb = ttk.Frame(ready)
-    rb.grid(row=6, column=0, columnspan=2, sticky="we", pady=(16, 0))
+    rb.grid(row=6, column=0, columnspan=3, sticky="we", pady=(16, 0))
     launch = ttk.Button(rb, text="Launch MVP 06")
     launch.pack(side="left", ipadx=18, ipady=6)
     change = ttk.Button(rb, text="Add or change button art, or reinstall…")
@@ -612,7 +685,9 @@ def gui(root):
                 good = r[k].startswith("installed")
                 text.configure(text=f"{label}: {r[k]}", foreground="#1a7f37" if good else "#777")
             frm.grid_remove()
-            ready.grid(row=0, column=0, sticky="nw")
+            ready.grid(row=0, column=0, sticky="nwe")
+            tab.columnconfigure(0, weight=1)
+            show_art()
             back.pack(side="left")
             labels["xbox"].configure(text="Xbox disc (installed: leave empty, or choose one to install again)")
         else:
@@ -663,25 +738,126 @@ def gui(root):
         bar.configure(value=0)
         threading.Thread(target=work, daemon=True).start()
 
+    def offer_bring_over(*_):
+        """The first time the Launcher opens in a folder without the game, and on Ctrl+Shift+B: an older MVP06-Plus
+        (Beta 1 has no updater) or Mad Dog's MVP06, its game, saves and settings brought in instead of the discs."""
+        from tkinter import messagebox
+        set_launcher_option(root, "offered_bring_over", True)
+        if not messagebox.askyesno("Already have MVP06-Plus?", (
+                "Coming from MVP06-Plus Beta 1 or Mad Dog's MVP06?\n\n"
+                "Bring over its game, saves and settings, instead of installing from your discs.\n\n"
+                "(Ctrl+Shift+B asks again later.)"), parent=w):
+            return
+        bring_over()
+
+    def bring_over():
+        """An older install's game, saves and settings, copied or moved in."""
+        import carryover
+        from tkinter import messagebox
+        old = filedialog.askdirectory(title="Your older MVP06-Plus folder (the one with MVP06.exe)")
+        if not old:
+            return
+        old = os.path.normpath(old)
+        try:
+            size = carryover.check(old, root)
+        except carryover.CarryError as e:
+            return messagebox.showinfo("Bring it over", f"That folder can't be used: {e}.", parent=w)
+        how = {}
+        win = tk.Toplevel(w)
+        win.title("Bring it over")
+        win.transient(w)
+        win.grab_set()
+        f = ttk.Frame(win, padding=14)
+        f.grid()
+        gb = f"{size / 2**30:.1f} GB"
+        ttk.Label(f, wraplength=420, justify="left", text=(
+            f"Bring over your game, saves and settings from:\n{old} ({gb})")).grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        ttk.Label(f, wraplength=420, justify="left", text=(
+            f"Copy: keeps the old folder. Needs {gb} free.\n"
+            "Move: needs no extra space. The old folder won't work afterwards.")).grid(
+            row=2, column=0, columnspan=3, sticky="w", pady=(0, 12))
+        for i, (text, v) in enumerate((("Copy", False), ("Move", True))):
+            ttk.Button(f, text=text, command=lambda v=v: (how.update(move=v), win.destroy())).grid(
+                row=3, column=i, padx=(0, 6), sticky="w")
+        ttk.Button(f, text="Cancel", command=win.destroy).grid(row=3, column=2, sticky="e")
+        win.wait_window()
+        if "move" not in how:
+            return
+        if updater_running():
+            return messagebox.showinfo("Bring it over", "Close MVP06.exe first.", parent=w)
+        go.configure(state="disabled")
+        bar.configure(value=0)
+        status("Bringing it over...")
+
+        def job():
+            try:
+                carryover.bring_over(old, root, how["move"], say, progress)
+                import title_icon
+                if title_icon.ensure(root, say):
+                    w.after(0, set_icon)
+                r = check_install(root)
+                status("")
+                if r["xbox_ok"] and r["exe"]:
+                    say("Done: everything's here. The old folder can be deleted once you've checked it all.")
+                    w.after(1500, lambda: show(r))
+                else:
+                    say(f"Brought over, but the game isn't ready: {r['xbox']}")
+            except (OSError, carryover.CarryError) as e:
+                status("")
+                say(f"Stopped: {e}")
+            finally:
+                w.after(0, lambda: go.configure(state="normal"))
+        threading.Thread(target=job, daemon=True).start()
+
+    def updater_running():
+        import updater
+        return updater.game_running()
+
     def do_launch():
         exe = os.path.join(root, "MVP06.exe")
+        import gamepad_nav
+        gamepad_nav.release()  # the GameCube adapter, if the Launcher was reading it: the game needs it
         try:
-            subprocess.Popen([exe], cwd=root, close_fds=True)
+            game = subprocess.Popen([exe], cwd=root, close_fds=True)
         except OSError as e:
             launch_note.configure(text=f"MVP06.exe wouldn't start: {e}")
             return
-        w.after(800, w.destroy)
+        # the Launcher stays, minimized: alt-tab to it for the Tools while the game runs. It closes with the game,
+        # unless it was brought back up (to patch a save after quitting, say): then it stays until it's closed.
+        w.after(800, w.iconify)
+
+        def watch():
+            if game.poll() is None:
+                return w.after(1000, watch)
+            import updater
+            if updater.game_running():  # another MVP06.exe took over (a title launch): wait for that one too
+                return w.after(2000, watch)
+            if w.state() == "iconic":
+                w.destroy()
+        w.after(2000, watch)
 
     def do_change():
         ready.grid_remove()
         frm.grid(row=0, column=0, sticky="nw")
 
     go.configure(command=start)
+    w.bind_all("<Control-Shift-B>", offer_bring_over)
+    w.bind_all("<Control-Shift-b>", offer_bring_over)
     launch.configure(command=do_launch)
     change.configure(command=do_change)
     back.configure(command=lambda: show())
-    show()
+    if not show() and not launcher_option(root, "offered_bring_over", False):
+        w.after(600, offer_bring_over)  # the first time, in a folder without the game
     watch_pads()
+    import gamepad_nav  # a controller moves around the Launcher too
+    gamepad_nav.attach(w, tabs, on_start=lambda: do_launch() if ready.winfo_ismapped() and
+                       tabs.index(tabs.select()) == 0 else None)
+    tabs.focus_set()
+    import updater
+    updater.tidy(root)
+    if launcher_option(root, "check_updates", True):
+        check_for_update(w, root, tk, ttk, quiet=True)
     w.mainloop()
 
 
@@ -719,37 +895,308 @@ def open_in_explorer(path):
 
 
 def saves_tab(tabs, root, tk, ttk):
-    """Saves: Current saves and Backups, each its own tab inside."""
-    outer = ttk.Frame(tabs, padding=8)
+    """Saves: your saves or their backups, one switch apart. Import a save opens from your saves."""
+    outer = ttk.Frame(tabs, padding=12)
     tabs.add(outer, text="Saves")
-    inner = ttk.Notebook(outer)
-    inner.grid(sticky="nwe")
-    refresh_current = current_saves_tab(inner, root, tk, ttk)
-    refresh_backups = backups_tab(inner, root, tk, ttk, refresh_current)
+    head = ttk.Frame(outer)
+    head.grid(row=0, column=0, sticky="we", pady=(0, 6))
+    outer.columnconfigure(0, weight=1)
+    ttk.Label(head, text="Saves", font=("Segoe UI", 10, "bold")).pack(side="left")
+    view = tk.StringVar(value="saves")
+    switch = ttk.Frame(head)
+    switch.pack(side="right")
+    pages = {"saves": ttk.Frame(outer), "backups": ttk.Frame(outer)}
+    refresh_current = current_saves_tab(pages["saves"], root, tk, ttk)
+    refresh_backups = backups_tab(pages["backups"], root, tk, ttk, refresh_current)
+    refresh = {"saves": refresh_current, "backups": refresh_backups}
 
-    def on_tab(_):  # each list as it is now when it's looked at
-        if inner.index("current") == 0:
-            refresh_current()
+    def show(*_):
+        for k, f in pages.items():
+            if k == view.get():
+                f.grid(row=1, column=0, sticky="nwe")
+            else:
+                f.grid_remove()
+        refresh[view.get()]()  # each list as it is now when it's looked at
+    for value, text in (("saves", "Your saves"), ("backups", "Backups")):
+        ttk.Radiobutton(switch, text=text, value=value, variable=view, style="Toolbutton", command=show).pack(
+            side="left")
+    show()
+    outer.bind("<Map>", lambda _: refresh[view.get()]())
+
+
+def import_window(parent, root, tk, ttk, on_close=None):
+    """Import a save, in a window of its own over the Launcher; your saves listed again when it closes."""
+    w = parent.winfo_toplevel()
+    for c in w.winfo_children():  # one at a time
+        if isinstance(c, tk.Toplevel) and getattr(c, "_import", False):
+            c.lift()
+            return
+    win = tk.Toplevel(w)
+    win._import = True
+    win.title("Import a save")
+    win.transient(w)
+    win.resizable(False, False)
+    f = ttk.Frame(win, padding=14)
+    f.grid()
+    ttk.Label(f, text="Import a save", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w",
+                                                                          pady=(0, 2))
+    body = ttk.Frame(f)
+    body.grid(row=1, column=0, sticky="nwe")
+    import_tool(body, root, tk, ttk)
+    bar = ttk.Frame(f)
+    bar.grid(row=2, column=0, sticky="e", pady=(12, 0))
+
+    def close():
+        win.destroy()
+        if on_close:
+            on_close()
+    ttk.Button(bar, text="Close", command=close).pack(side="right")
+    win.protocol("WM_DELETE_WINDOW", close)
+    win.update_idletasks()  # centred over the Launcher
+    x = w.winfo_rootx() + (w.winfo_width() - win.winfo_width()) // 2
+    y = w.winfo_rooty() + (w.winfo_height() - win.winfo_height()) // 3
+    win.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
+
+def choose_card_save(parent, tk, ttk, found):
+    """One of a memory card's MVP 2005 saves [(folder, file, what, save)], picked in a small window; None if
+    closed."""
+    win = tk.Toplevel(parent)
+    win.title("Which save?")
+    win.transient(parent.winfo_toplevel())
+    win.grab_set()
+    f = ttk.Frame(win, padding=12)
+    f.grid()
+    ttk.Label(f, text="The memory card has more than one MVP 2005 save. Which one?").grid(sticky="w")
+    lb = tk.Listbox(f, height=min(8, len(found)), width=56, exportselection=False)
+    for folder, name, what, _ in found:
+        lb.insert("end", f"{name}: {what}   ({folder})")
+    lb.selection_set(0)
+    lb.grid(sticky="we", pady=8)
+    out = {}
+
+    def ok(*_):
+        if lb.curselection():
+            out["v"] = found[lb.curselection()[0]]
+        win.destroy()
+    ttk.Button(f, text="Use this one", command=ok).grid(sticky="e")
+    lb.bind("<Double-Button-1>", ok)
+    win.wait_window()
+    return out.get("v")
+
+
+def import_tool(frm, root, tk, ttk):
+    """Import a save: a save from another MVP 2005 written into one of your saves here (backed up first), so it
+    plays in MVP05-Plus. Rosters from the PS2, PC or another Xbox (Mad Dog's conversion, from his MVP Roster
+    Toolkit); dynasties from the GameCube (spy_jam's converter), the PS2 and the PC (both of theirs)."""
+    import dynasty05 as DY
+    import gcroster05 as GR
+    import ps2card as PC
+    import pcdynasty05 as PCD
+    import ps2dynasty05 as PD
+    import rosters05 as RO
+    import saves05 as S
+    from tkinter import filedialog, messagebox
+
+    frm.columnconfigure(1, weight=1)
+    ttk.Label(frm, foreground="#666", wraplength=540, justify="left", text=(
+        "Brings a save from another version of MVP 2005 into this one. It works with:\n"
+        "\u2022  rosters or a dynasty from the PS2 (a .psu, a PCSX2 memory card .ps2, or the .sav file from a save)\n"
+        "\u2022  rosters or a dynasty from the GameCube (the .gci file Dolphin exports)\n"
+        "\u2022  rosters or a dynasty from the PC (.sav)\n"
+        "\u2022  rosters or a dynasty from another Xbox (its data.dat)\n"
+        "The save goes into one of your own saves of the same kind, which is backed up first.")).grid(
+        row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
+
+    def step(row, n, text):
+        ttk.Label(frm, text=f"{n}.", font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="nw", padx=(0, 8))
+        ttk.Label(frm, text=text, font=("Segoe UI", 9, "bold")).grid(row=row, column=1, sticky="w")
+
+    step(2, 1, "Choose the save to bring in")
+    line = ttk.Frame(frm)
+    line.grid(row=3, column=1, sticky="w", pady=(4, 12))
+    pick_b = ttk.Button(line, text="Choose a save...")
+    pick_b.pack(side="left")
+    src_text = ttk.Label(line, text="", foreground="#666")
+    src_text.pack(side="left", padx=10)
+
+    step(4, 2, "Pick which of your saves it replaces")
+    box = ttk.Combobox(frm, state="readonly", width=48)
+    box.grid(row=5, column=1, sticky="w", pady=(4, 2))
+    hint = ttk.Label(frm, foreground="#666", wraplength=520, justify="left")
+    hint.grid(row=6, column=1, sticky="w", pady=(0, 12))
+
+    step(7, 3, "Import it")
+    go_line = ttk.Frame(frm)
+    go_line.grid(row=8, column=1, sticky="w", pady=(4, 0))
+    go_b = ttk.Button(go_line, text="Import", state="disabled")
+    go_b.pack(side="left")
+    note = ttk.Label(frm, wraplength=520, justify="left")
+    note.grid(row=9, column=1, sticky="w", pady=(8, 0))
+    ttk.Label(frm, foreground="#888", wraplength=540, justify="left", text=(
+        "Roster conversion by Mad Dog (MVP Roster Toolkit). GameCube conversion (rosters and dynasties) by spy_jam. "
+        "PS2 and PC dynasties use both.")).grid(
+        row=10, column=0, columnspan=2, sticky="w", pady=(16, 0))
+    picked, targets = {}, []
+    kinds = {"roster": ("roster save", "rosters"), "dynasty": ("dynasty save", "dynasty")}
+
+    def say(text, colour="#555"):
+        note.configure(text=text, foreground=colour)
+
+    def ready():
+        go_b.configure(state="normal" if picked.get("kind") and targets and box.current() >= 0 else "disabled")
+
+    def refresh(*_):
+        old, kind = box.get(), picked.get("kind")
+        targets.clear()
+        for s in S.list_saves(root):
+            size = os.path.getsize(os.path.join(s["folder"], "data.dat"))
+            if (kind == "roster" and size == RO.XBOX_SAVE_SIZE) or \
+                    (kind == "dynasty" and size == DY.XB_DYNASTY_SIZE and s["type"] == "Dynasty"):
+                targets.append(s)
+        labels = [f"{s['name']} ({when_text(s['when'])})" for s in targets]
+        box.configure(values=labels, state="readonly" if labels else "disabled")
+        if old in labels:
+            box.set(old)
+        elif labels:
+            box.current(0)
         else:
-            refresh_backups()
-    inner.bind("<<NotebookTabChanged>>", on_tab)
+            box.set("")
+        if not kind:
+            hint.configure(text="Choose a save first: then your saves of the same kind are listed here.",
+                           foreground="#666")
+        elif labels:
+            hint.configure(text=f"That {kinds[kind][0]} is backed up first. A dynasty keeps the name of the save "
+                                "it goes into." if kind == "dynasty" else
+                           f"That {kinds[kind][0]} is backed up first.", foreground="#666")
+        else:
+            hint.configure(text=f"You don't have a {kinds[kind][0]} yet. In the game, " +
+                           ("save your rosters once" if kind == "roster" else "start a dynasty and save it") +
+                           ", then come back here.", foreground="#a33")
+        ready()
+
+    def pick():
+        p = filedialog.askopenfilename(parent=frm, title="A save from another MVP 2005", filetypes=[
+            ("MVP 2005 saves", "*.gci *.psu *.ps2 *.sav *.dat"), ("All files", "*.*")])
+        if not p:
+            return
+        picked.clear()
+        say("")
+        try:
+            with open(p, "rb") as f:
+                data = f.read()
+            if data[:4] == b"GV4E" and b"Rosters" in data[:0x40]:
+                GR.read_gc(data)
+                picked.update(kind="roster", gc_roster=data, what="GameCube rosters")
+            elif data[:4] == b"GV4E":
+                meta = DY.read_gc(data)
+                picked.update(kind="dynasty", data=data, what=f"GameCube dynasty \"{meta['name']}\"")
+            elif data[:28] == PC.MAGIC:  # a PS2 memory card: its MVP 2005 roster and dynasty saves
+                found, refused = [], []
+                for folder, files in PC.Card(data).saves().items():
+                    for name, b in files.items():
+                        try:
+                            if len(b) == RO.SIZE + RO.PC_HEAD:
+                                found.append((folder, name, "rosters", RO.read(b)))
+                            elif len(b) == PD.HEAD + PD.SIZE:
+                                found.append((folder, name, "dynasty", PD.read(b)))
+                        except (RO.RosterError, PD.Ps2DynastyError) as e:
+                            refused.append(str(e))
+                if not found:
+                    raise RO.RosterError(refused[0] if refused else "that memory card has no MVP 2005 roster or "
+                                                                    "dynasty save on it")
+                which = found[0] if len(found) == 1 else choose_card_save(frm, tk, ttk, found)
+                if not which:
+                    return
+                if which[2] == "dynasty":
+                    picked.update(kind="dynasty", ps2_dynasty=which[3],
+                                  what=f"PS2 dynasty \"{which[3]['name']}\" ({which[1]} on the card)")
+                else:
+                    picked.update(kind="roster", save=which[3], what=f"PS2 rosters ({which[1]} on the card)")
+            elif len(data) == DY.XB_DYNASTY_SIZE:
+                m = DY.read_xbox(data)
+                picked.update(kind="dynasty", xbox_dynasty=True, data=data, what=f"Xbox dynasty \"{m['name']}\"")
+            elif PCD.is_dynasty(data):
+                d = PCD.read(data)
+                picked.update(kind="dynasty", pc_dynasty=d, what=f"PC dynasty \"{d['name']}\"")
+            elif PD.is_dynasty(data):
+                d = PD.read(data)
+                picked.update(kind="dynasty", ps2_dynasty=d, what=f"PS2 dynasty \"{d['name']}\"")
+            else:
+                save = RO.read(data)
+                picked.update(kind="roster", save=save, what=f"{save.platform} rosters")
+        except (OSError, RO.RosterError, DY.DynastyError, PC.CardError, GR.GcRosterError, PD.Ps2DynastyError,
+                PCD.PcDynastyError) as e:
+            src_text.configure(text=f"{os.path.basename(p)}: can't be used ({e})", foreground="#a33")
+            return refresh()
+        picked["path"] = p
+        src_text.configure(text=f"{os.path.basename(p)}: {picked['what']} \u2713", foreground="#1a7f37")
+        refresh()
+
+    def go():
+        kind, s = picked.get("kind"), targets[box.current()] if box.current() >= 0 else None
+        if not kind or not s:
+            return
+        if not messagebox.askyesno("Import a save", (
+                f"Replace the {kinds[kind][1]} in \"{s['name']}\" with the {picked['what']} from "
+                f"{os.path.basename(picked['path'])}?\n\n\"{s['name']}\" is backed up first (Saves > Backups)."),
+                parent=frm):
+            return
+        dat = os.path.join(s["folder"], "data.dat")
+        go_b.configure(state="disabled")
+        say("Converting...")
+
+        def work():
+            try:
+                if S.game_running():
+                    raise RO.RosterError("close MVP06.exe first: the game keeps its saves open while it runs")
+                with open(dat, "rb") as f:
+                    mine = f.read()
+                if picked.get("xbox_dynasty"):
+                    out = DY.xbox_to_xbox(picked["data"], mine)
+                elif picked.get("pc_dynasty"):
+                    out = PCD.to_xbox(picked["pc_dynasty"], mine)
+                elif picked.get("ps2_dynasty"):
+                    out = PD.to_xbox(picked["ps2_dynasty"], mine)
+                elif kind == "dynasty":
+                    out = DY.gc_to_xbox(picked["data"], mine)
+                elif picked.get("gc_roster"):
+                    out = GR.to_xbox(picked["gc_roster"], mine)
+                else:
+                    out = RO.to_xbox(picked["save"], mine)
+                S.backup_folder(root, s["folder"], f"importing {kinds[kind][1]}")
+                with open(dat + ".new", "wb") as f:
+                    f.write(out)
+                os.replace(dat + ".new", dat)
+                msg = (f"Done. Load \"{s['name']}\" in the game. The old save is in Saves > Backups.",
+                       "#1a7f37")
+            except (OSError, RO.RosterError, DY.DynastyError, GR.GcRosterError, PD.Ps2DynastyError,
+                    PCD.PcDynastyError) as e:
+                msg = (f"Nothing was changed: {e}.", "#a33")
+            frm.after(0, lambda: (say(*msg), refresh()))
+        threading.Thread(target=work, daemon=True).start()
+
+    pick_b.configure(command=pick)
+    go_b.configure(command=go)
+    box.bind("<<ComboboxSelected>>", lambda _: ready())
+    refresh()
+    return refresh
 
 
-def current_saves_tab(nb, root, tk, ttk):
+def current_saves_tab(frm, root, tk, ttk):
     import backups as B
 
-    frm = ttk.Frame(nb, padding=10)
-    nb.add(frm, text="Current saves")
     ttk.Label(frm, wraplength=520, justify="left", text=(
         "The saves the game uses now, in hdd beside MVP06.exe.")).grid(row=0, column=0, sticky="w", pady=(0, 8))
     tree = ttk.Treeview(frm, columns=("when", "size"), show="tree headings", height=12, selectmode="browse")
     tree.heading("#0", text="Save")
     tree.heading("when", text="Last saved")
     tree.heading("size", text="Size")
-    tree.column("#0", width=280, anchor="w")
-    tree.column("when", width=150, anchor="w")
+    tree.column("#0", width=330, anchor="w")
+    tree.column("when", width=160, anchor="w")
     tree.column("size", width=80, anchor="e")
     tree.grid(row=1, column=0, sticky="we")
+    frm.columnconfigure(0, weight=1)
     note = ttk.Label(frm, text="", foreground="#666")
     note.grid(row=3, column=0, sticky="w", pady=(6, 0))
 
@@ -772,6 +1219,8 @@ def current_saves_tab(nb, root, tk, ttk):
 
     bar = ttk.Frame(frm)
     bar.grid(row=2, column=0, sticky="we", pady=(8, 0))
+    ttk.Button(bar, text="Import a save\u2026", command=lambda: import_window(frm, root, tk, ttk, refresh)).pack(
+        side="left")
     ttk.Button(bar, text="Open saves folder",
                command=lambda: open_in_explorer(os.path.join(root, "hdd", B.TITLE_UDATA))).pack(side="right")
     ttk.Button(bar, text="Refresh", command=refresh).pack(side="right", padx=6)
@@ -803,9 +1252,9 @@ def settings_tab(tabs, root, tk, ttk):
     frm = ttk.Frame(tabs, padding=12)
     tabs.add(frm, text="Settings")
     ttk.Label(frm, text="Display", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, columnspan=3, sticky="w")
-    ttk.Label(frm, foreground="#666", wraplength=520, justify="left", text=(
+    ttk.Label(frm, foreground="#666", wraplength=600, justify="left", text=(
         "Saved in mvp06-settings.toml beside the game. Changes take effect the next time the game starts.")).grid(
-        row=1, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
     mode = tk.StringVar()
     aspect = tk.StringVar()
     res = tk.StringVar()
@@ -813,6 +1262,7 @@ def settings_tab(tabs, root, tk, ttk):
     fps = tk.StringVar()
     aniso = tk.StringVar()
     vsync = tk.BooleanVar()
+    low_latency = tk.BooleanVar()
     x720 = tk.BooleanVar()
     desk = desktop_resolution()
     # The game plays widescreen when the resolution is 3:2 or wider (app::Widescreen), else 4:3, with black bars at
@@ -837,16 +1287,18 @@ def settings_tab(tabs, root, tk, ttk):
                                            width=34)),
     ]
     for i, (label, widget) in enumerate(rows):
-        ttk.Label(frm, text=label).grid(row=2 + i, column=0, sticky="w", pady=3)
-        widget.grid(row=2 + i, column=1, sticky="w", padx=(12, 0), pady=3)
-    ttk.Label(frm, text="(or type one, like 1366 x 768)", foreground="#666").grid(
+        ttk.Label(frm, text=label).grid(row=2 + i, column=0, sticky="w", pady=2)
+        widget.grid(row=2 + i, column=1, sticky="w", padx=(12, 0), pady=2)
+    ttk.Label(frm, text="(or type your own, width x height)", foreground="#666").grid(
         row=4, column=2, sticky="w", padx=8)
     ttk.Checkbutton(frm, text="VSync", variable=vsync).grid(row=8, column=0, columnspan=2, sticky="w", pady=(6, 0))
     x720_box = ttk.Checkbutton(frm, text="Xbox 720p mode (as on an Xbox console with 720p enabled in the dashboard)",
                                variable=x720)
     x720_box.grid(row=9, column=0, columnspan=3, sticky="w")
-    note = ttk.Label(frm, text="", wraplength=520, justify="left")
-    note.grid(row=11, column=0, columnspan=3, sticky="w", pady=(10, 0))
+    ttk.Checkbutton(frm, text="Low latency (1 frame queued for the screen, not 3: less input delay, may stutter)",
+                    variable=low_latency).grid(row=10, column=0, columnspan=3, sticky="w")
+    note = ttk.Label(frm, text="", wraplength=560, justify="left")
+    note.grid(row=12, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
     def name_of(d, v):
         return next((k for k, x in d.items() if x == v), str(v))
@@ -912,6 +1364,7 @@ def settings_tab(tabs, root, tk, ttk):
         fps.set(name_of(fps_names, s["fps_cap"]))
         aniso.set(name_of(aniso_names, s["anisotropic_filtering"]))
         vsync.set(bool(s["vsync"]))
+        low_latency.set(bool(s.get("low_latency", False)))
         wide_720[0] = bool(s["xbox_720p"]) if aspect.get() == WIDE else True
         x720.set(wide_720[0] if aspect.get() == WIDE else False)
 
@@ -932,7 +1385,8 @@ def settings_tab(tabs, root, tk, ttk):
         fp = fps_names.get(fps.get(), 60) if fps.get() in fps_names else int(fps.get())
         an = aniso_names.get(aniso.get(), 0) if aniso.get() in aniso_names else int(aniso.get().rstrip("x"))
         ST.write(root, {"display_mode": mode.get().lower(), "width": w, "height": h, "render_percent": sc,
-                        "fps_cap": fp, "vsync": vsync.get(), "anisotropic_filtering": an,
+                        "fps_cap": fp, "vsync": vsync.get(), "low_latency": low_latency.get(),
+                        "anisotropic_filtering": an,
                         "xbox_720p": x720.get()})
         note.configure(text="Saved. Restart the game if it's running.", foreground="#1a7f37")
 
@@ -944,8 +1398,18 @@ def settings_tab(tabs, root, tk, ttk):
 
     # desktop shortcuts, only when asked for
     import shortcuts as SC
-    ttk.Label(frm, text="Desktop shortcuts", font=("Segoe UI", 10, "bold")).grid(
-        row=12, column=0, columnspan=3, sticky="w", pady=(18, 4))
+    # shortcuts and updates side by side under the display settings
+    lower = ttk.Frame(frm)
+    lower.grid(row=13, column=0, columnspan=3, sticky="nwe", pady=(8, 0))
+    lower.columnconfigure(0, weight=1)
+    lower.columnconfigure(2, weight=1)
+    scf = ttk.Frame(lower)
+    scf.grid(row=0, column=0, sticky="nw")
+    ttk.Separator(lower, orient="vertical").grid(row=0, column=1, sticky="ns", padx=14)
+    upf = ttk.Frame(lower)
+    upf.grid(row=0, column=2, sticky="nw")
+    ttk.Label(scf, text="Desktop shortcuts", font=("Segoe UI", 10, "bold")).grid(
+        row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
     sc_rows = [(SC.GAME_NAME, lambda: os.path.join(root, "MVP06.exe"), "the game"),
                (SC.TOOLS_NAME, SC.tools_exe, "this Launcher")]
     sc_buttons = {}
@@ -955,15 +1419,15 @@ def settings_tab(tabs, root, tk, ttk):
             b, lbl = sc_buttons[name]
             if os.name != "nt" or not target() or not os.path.isfile(target()):
                 b.configure(text="Create", state="disabled")
-                lbl.configure(text=f"\"{name}\": " + ("Windows only" if os.name != "nt" else
-                                                       "only from the Launcher's .exe" if not target() else
-                                                       "MVP06.exe isn't here"), foreground="#777")
+                lbl.configure(text=f"{name}: " + ("Windows only" if os.name != "nt" else
+                                                  "only from the Launcher's .exe" if not target() else
+                                                  "MVP06.exe isn't here"), foreground="#777")
             elif SC.exists(name):
                 b.configure(text="Remove", state="normal")
-                lbl.configure(text=f"\"{name}\" is on your desktop", foreground="#1a7f37")
+                lbl.configure(text=f"{name}: on your desktop", foreground="#1a7f37")
             else:
                 b.configure(text="Create", state="normal")
-                lbl.configure(text=f"\"{name}\": not on your desktop", foreground="#555")
+                lbl.configure(text=f"{name}: not on your desktop", foreground="#555")
 
     def sc_toggle(name, target, what):
         try:
@@ -978,15 +1442,16 @@ def settings_tab(tabs, root, tk, ttk):
         sc_refresh()
 
     for i, (name, target, what) in enumerate(sc_rows):
-        b = ttk.Button(frm, width=9, command=lambda n=name, t=target, w_=what: sc_toggle(n, t, w_))
-        b.grid(row=13 + i, column=0, sticky="w", pady=2)
-        lbl = ttk.Label(frm)
-        lbl.grid(row=13 + i, column=1, columnspan=2, sticky="w", padx=(12, 0))
+        b = ttk.Button(scf, width=8, command=lambda n=name, t=target, w_=what: sc_toggle(n, t, w_))
+        b.grid(row=1 + i, column=0, sticky="w", pady=2)
+        lbl = ttk.Label(scf)
+        lbl.grid(row=1 + i, column=1, sticky="w", padx=(8, 0))
         sc_buttons[name] = (b, lbl)
     sc_refresh()
+    updates_section(upf, root, tk, ttk, 0)
 
     bar = ttk.Frame(frm)
-    bar.grid(row=10, column=0, columnspan=3, sticky="we", pady=(14, 0))
+    bar.grid(row=11, column=0, columnspan=3, sticky="we", pady=(8, 0))
     ttk.Button(bar, text="Save", command=save).pack(side="right")
     ttk.Button(bar, text="Defaults", command=defaults).pack(side="right", padx=6)
     ttk.Button(bar, text="Open the settings file", command=lambda: os.startfile(os.path.join(root, ST.FILE))
@@ -994,13 +1459,136 @@ def settings_tab(tabs, root, tk, ttk):
     load()
 
 
-def backups_tab(nb, root, tk, ttk, refresh_current):
+def updates_section(frm, root, tk, ttk, row):
+    """Settings tab: this version, Check for updates, the check at start, and undoing the last update."""
+    import updater
+    ttk.Label(frm, text="Updates", font=("Segoe UI", 10, "bold")).grid(row=row, column=0, columnspan=3, sticky="w",
+                                                                      pady=(0, 4))
+    line = ttk.Frame(frm)
+    line.grid(row=row + 1, column=0, columnspan=3, sticky="w")
+    status = ttk.Label(frm, foreground="#555", wraplength=260, justify="left")
+    status.grid(row=row + 3, column=0, columnspan=3, sticky="w", pady=(4, 0))
+    auto = tk.BooleanVar(value=launcher_option(root, "check_updates", True))
+    ttk.Label(line, text=f"This is {VERSION}.").pack(side="left")
+    ttk.Button(line, text="Check now",
+               command=lambda: check_for_update(frm.winfo_toplevel(), root, tk, ttk, status=status)).pack(
+        side="left", padx=(12, 0))
+    ttk.Checkbutton(frm, text="Check when the Launcher opens", variable=auto,
+                    command=lambda: set_launcher_option(root, "check_updates", auto.get())).grid(
+        row=row + 2, column=0, columnspan=3, sticky="w", pady=(4, 0))
+    last = updater.last_update(root)
+    if last:
+        def do_undo():
+            from tkinter import messagebox
+            if not messagebox.askyesno("Undo the update", f"Go back to {GAME} {last['from']}?\n\n"
+                                       "Your game files, saves and settings stay as they are.", parent=frm):
+                return
+            try:
+                back = updater.undo(root)
+            except updater.UpdateError as e:
+                status.configure(text=f"Couldn't undo it: {e}", foreground="#a33")
+                return
+            messagebox.showinfo("Undo the update", f"Back to {GAME} {back}. The Launcher restarts now.", parent=frm)
+            updater.restart(pretend=back)
+            frm.winfo_toplevel().destroy()
+        ttk.Button(line, text=f"Back to {last['from']}", command=do_undo).pack(side="left", padx=(6, 0))
+
+
+def check_for_update(w, root, tk, ttk, quiet=False, status=None):
+    """Asks GitHub in the background; a newer release opens the update window. quiet: say nothing otherwise."""
+    import updater
+
+    def say(text, colour="#555"):
+        if status is not None:
+            w.after(0, lambda: status.configure(text=text, foreground=colour))
+
+    def work():
+        try:
+            info = updater.check(VERSION)
+        except updater.UpdateError as e:
+            if not quiet:
+                say(f"Couldn't check: {e}", "#a33")
+            return
+        if info:
+            say(f"{GAME} {info['version']} is out.", "#1a7f37")
+            w.after(0, lambda: update_window(w, root, tk, ttk, info))
+        elif not quiet:
+            say(f"{VERSION} is the latest.", "#1a7f37")
+
+    say("Checking...")
+    threading.Thread(target=work, daemon=True).start()
+
+
+def update_window(w, root, tk, ttk, info):
+    """What's new in the release, and Update now: download, check, install, restart."""
+    import updater
+    import webbrowser
+    win = tk.Toplevel(w)
+    win.title(f"{GAME} {info['version']}")
+    win.transient(w)
+    win.resizable(False, False)
+    f = ttk.Frame(win, padding=14)
+    f.grid()
+    ttk.Label(f, text=f"{GAME} {info['version']} is out", font=("Segoe UI", 12, "bold")).grid(row=0, column=0,
+                                                                                           columnspan=3, sticky="w")
+    ttk.Label(f, foreground="#555", text=f"You have {VERSION}. Your game files, saves, backups, button art and "
+              "settings stay as they are.", wraplength=520, justify="left").grid(row=1, column=0, columnspan=3,
+                                                                                sticky="w", pady=(2, 8))
+    notes = tk.Text(f, width=72, height=14, wrap="word", relief="solid", borderwidth=1, font=("Segoe UI", 9))
+    import re
+    text = "\n".join(re.sub(r"^\s*[-*] ", "\u2022 ", re.sub(r"^#+\s*", "", line)).replace("**", "")
+                     for line in info["notes"].strip().splitlines())
+    notes.insert("1.0", text or "(no notes)")
+    notes.configure(state="disabled")
+    notes.grid(row=2, column=0, columnspan=3, sticky="we")
+    bar = ttk.Progressbar(f, length=520, mode="determinate", maximum=1.0)
+    bar.grid(row=3, column=0, columnspan=3, sticky="we", pady=(10, 2))
+    note = ttk.Label(f, foreground="#555", wraplength=520, justify="left")
+    note.grid(row=4, column=0, columnspan=3, sticky="w")
+    buttons = ttk.Frame(f)
+    buttons.grid(row=5, column=0, columnspan=3, sticky="e", pady=(10, 0))
+    go = ttk.Button(buttons, text="Update now")
+    later = ttk.Button(buttons, text="Later", command=win.destroy)
+    ttk.Button(buttons, text="See it on GitHub", command=lambda: webbrowser.open(info["page"])).pack(side="left")
+    later.pack(side="right")
+    go.pack(side="right", padx=6)
+
+    def say(text, colour="#555"):
+        win.after(0, lambda: note.configure(text=text, foreground=colour))
+
+    def work():
+        try:
+            mb = info["size"] / 2**20 if info.get("size") else 0
+            say(f"Downloading {info['name']}" + (f" ({mb:.0f} MB)..." if mb else "..."))
+            z = updater.download(root, info, lambda d, t: win.after(0, lambda: bar.configure(
+                value=min(d / t, 1.0) * 0.9 if t else 0)))
+            say("Checking the download...")
+            files = updater.verify(z)
+            say("Installing...")
+            updater.apply(root, files, VERSION)
+            win.after(0, lambda: bar.configure(value=1.0))
+        except updater.UpdateError as e:
+            say(f"Not updated: {e}", "#a33")
+            win.after(0, lambda: (go.configure(state="normal"), later.configure(state="normal")))
+            return
+        say(f"Updated to {info['version']}. The Launcher restarts now.", "#1a7f37")
+        win.after(1500, lambda: (updater.restart(), w.destroy()))
+
+    def start():
+        if updater.game_running():
+            note.configure(text="MVP06 is running: quit the game first, then Update now.", foreground="#a33")
+            return
+        go.configure(state="disabled")
+        later.configure(state="disabled")
+        threading.Thread(target=work, daemon=True).start()
+    go.configure(command=start)
+
+
+def backups_tab(frm, root, tk, ttk, refresh_current):
     from tkinter import messagebox
     import backups as B
     import settings as ST
 
-    frm = ttk.Frame(nb, padding=10)
-    nb.add(frm, text="Backups")
     ttk.Label(frm, wraplength=520, justify="left", text=(
         "A backup is made each time the game starts. Open a date and pick the save to restore. Click the date to "
         "restore every save from that date.")).grid(
@@ -1008,14 +1596,19 @@ def backups_tab(nb, root, tk, ttk, refresh_current):
     tree = ttk.Treeview(frm, columns=("state",), show="tree headings", height=10, selectmode="extended")
     tree.heading("#0", text="Backed up / save")
     tree.heading("state", text="Compared to current saves")
-    tree.column("#0", width=330, anchor="w")
-    tree.column("state", width=190, anchor="w")
+    tree.column("#0", width=370, anchor="w")
+    tree.column("state", width=200, anchor="w")
     tree.grid(row=2, column=0, sticky="we")
-    out = tk.Text(frm, width=72, height=4, state="disabled", wrap="word", relief="flat", background="#f4f4f4")
-    out.grid(row=4, column=0, pady=(8, 0))
+    frm.columnconfigure(0, weight=1)
+    empty = ttk.Label(frm, foreground="#666")
+    empty.grid(row=4, column=0, sticky="w", pady=(6, 0))
+    out = tk.Text(frm, width=10, height=3, state="disabled", wrap="word", relief="flat", background="#f4f4f4")
+    out.grid(row=5, column=0, sticky="we", pady=(6, 0))
+    out.grid_remove()  # shown once a restore has something to say
     rows = {}
 
     def say(t):
+        out.grid()
         out.configure(state="normal")
         out.insert("end", t + "\n")
         out.see("end")
@@ -1032,8 +1625,8 @@ def backups_tab(nb, root, tk, ttk, refresh_current):
             for s in b["items"]:
                 iid = tree.insert(parent, "end", text=s["name"], values=(s["state"],))
                 rows[iid] = ("save", b, s)
-        if not rows:
-            say("No backups yet: the game makes one when it starts, once you have saves.")
+        empty.configure(text="" if rows else "No backups yet: the game makes one when it starts, once you have "
+                                              "saves.")
 
     def do_restore():
         sel = [rows[i] for i in tree.selection()]

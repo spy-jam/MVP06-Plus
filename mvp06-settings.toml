@@ -6,6 +6,9 @@ height = 0
 render_percent = 100
 fps_cap = 60
 vsync = true
+# Low latency: at most one finished frame waits for the screen instead of up to three, for less delay between a
+# button and the screen. Off by default: it can stutter on a slower PC. Restart after changing.
+low_latency = false
 anisotropic_filtering = 16
 
 # Enable the game's 1280x720 mode on widescreen output. Restart after changing.

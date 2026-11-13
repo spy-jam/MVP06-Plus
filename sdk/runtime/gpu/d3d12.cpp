@@ -750,6 +750,8 @@ private:
     std::vector<Query> counted_;  // since the last ClearReport
     std::deque<Report> reports_;
     bool tearing_ = false;
+    UINT swap_flags_ = 0;            // the swap chain's flags, the same again on every resize
+    HANDLE latency_wait_ = nullptr;  // low_latency: signalled when the screen can take another frame
     uint64_t presents_ = 0;
     double fps_ = 0;
     std::chrono::steady_clock::time_point fps_t_ = std::chrono::steady_clock::now();
@@ -839,7 +841,12 @@ bool D3D12Backend::CreateSwapChain(HWND hwnd) {
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.BufferCount = kFrames;
     sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    sd.Flags = tearing_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    // low_latency: at most one frame queued for the screen, and a frame only drawn when the screen can take it
+    // (DXGI's own queue is otherwise up to three frames: up to ~50 ms between a button and the screen at 60 Hz)
+    const bool low_latency = app::Get().low_latency;
+    swap_flags_ = (tearing_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0) |
+                  (low_latency ? DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : 0);
+    sd.Flags = swap_flags_;
     ComPtr<IDXGISwapChain1> sc1;
     if (FAILED(factory_->CreateSwapChainForHwnd(queue_.Get(), hwnd, &sd, nullptr, nullptr, &sc1))) {
         LOGE("d3d12: no swap chain");
@@ -847,6 +854,10 @@ bool D3D12Backend::CreateSwapChain(HWND hwnd) {
     }
     factory_->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
     sc1.As(&swap_);
+    if (low_latency && swap_ && SUCCEEDED(swap_->SetMaximumFrameLatency(1))) {
+        latency_wait_ = swap_->GetFrameLatencyWaitableObject();
+        LOGR("d3d12: low latency: one frame queued for the screen");
+    }
     return true;
 }
 
@@ -3163,7 +3174,7 @@ void D3D12Backend::ResizeSwap() {
         if (f.fence) WaitFence(f.fence);
     }
     for (auto& b : bb_) b.Reset();
-    swap_->ResizeBuffers(kFrames, w, h, DXGI_FORMAT_B8G8R8A8_UNORM, tearing_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
+    swap_->ResizeBuffers(kFrames, w, h, DXGI_FORMAT_B8G8R8A8_UNORM, swap_flags_);
     CreateBackBufferViews();
     bb_w_ = w;
     bb_h_ = h;
@@ -3368,6 +3379,9 @@ void D3D12Backend::Present(const Surface& front) {
     if (ramp_dirty_) UploadGammaRamp();
     Transition(lut_.Get(), lut_state_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+    // low_latency: wait until the screen can take a frame, so this one isn't queued behind others. Bounded: a
+    // minimized or hidden window may not signal it
+    if (latency_wait_) WaitForSingleObjectEx(latency_wait_, 100, TRUE);
     uint32_t bi = swap_->GetCurrentBackBufferIndex();
     DrawFrame(t, bi);
     if (g_screenshot.exchange(false)) SaveScreenshot(bi);

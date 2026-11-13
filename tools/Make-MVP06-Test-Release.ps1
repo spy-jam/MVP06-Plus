@@ -4,11 +4,14 @@ MVP06-Plus: a test release, made the way a real one is, in your Downloads folder
   1. unzips MVP06-Plus-repo.zip into Downloads\MVP06-Plus-test\MVP06-Plus (or reuses it)
   2. copies your Xbox game files into its assets (from your current game folder), for the build
   3. builds MVP06.exe (Visual Studio's x64 tools, LLVM clang, CMake, Ninja)
-  4. puts the repository on your GitHub as a PRIVATE repository and runs the "release tools" build there
+  4. puts the repository on your GitHub as a PRIVATE repository (MVP06-Plus-test; -Final: MVP06-Plus) and runs
+     the "release tools" build there
      (MVP06-Plus-Launcher.exe, gcbridge), then downloads them
   5. packs MVP06-Plus-Beta-1.zip as a release is packed, with Mad Dog's three runtime DLLs from his MVP 06 release zip
   6. makes a DRAFT release on GitHub with it (only you can see a draft)
-  7. unzips that zip into Downloads\MVP06-Plus-Beta-1, as a player would, and opens it
+  7. unzips that zip into Downloads\MVP06-Plus-Beta-2, as a player would, and opens it; if a test install with the
+     game installed is already there, it replaces only its program files instead (game files, saves and settings
+     stay)
 
 Needs: Git and the GitHub CLI (https://cli.github.com), signed in once with "gh auth login"; Visual Studio (or its
 Build Tools) with the C++ tools, Windows SDK and the "C++ Clang tools" component (or LLVM on PATH).
@@ -18,8 +21,8 @@ Nothing from the game is ever pushed: assets, gc_icons and ps2_icons are in .git
 param(
     [string]$Downloads = (Join-Path $env:USERPROFILE "Downloads"),
     [string]$GameDir = "",          # your current MVP06 folder (with assets\default.xbe); asked for if not given
-    [string]$RepoName = "MVP06-Plus",
-    [string]$Version = "Beta 1",
+    [string]$RepoName = "",         # default: MVP06-Plus for -Final, a private MVP06-Plus-test for a test
+    [string]$Version = "Beta 2",
     [switch]$SkipBuild,             # use the MVP06.exe already built in the work folder
     [switch]$Final,                 # the real release's draft: tag beta-1, no "(test)" (still a draft until you publish)
     [switch]$Refresh                # with -Final, on a release that's already published: rebuild and replace its zip,
@@ -37,6 +40,8 @@ function Fail($t) { Write-Host ""; Write-Host "Stopped: $t" -ForegroundColor Red
 function Need($cmd, $why) { if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { Fail "$cmd isn't installed ($why)" } }
 
 try {
+    # a test never goes to the public repository: its code would be public before its release
+    if (-not $RepoName) { $RepoName = if ($Final) { "MVP06-Plus" } else { "MVP06-Plus-test" } }
     $work = Join-Path $Downloads "MVP06-Plus-test"
     $repo = Join-Path $work "MVP06-Plus"
     $tag = ($Version -replace '\s', '-').ToLower()
@@ -144,7 +149,27 @@ try {
                   "(or install LLVM from https://github.com/llvm/llvm-project/releases)")
         }
         Write-Host "clang: $llvm"
-        $path = "set `"PATH=$llvm;%PATH%`" && "
+        # CMake and Ninja: Visual Studio's own (the "C++ CMake tools for Windows" component), or installed on PATH
+        $extra = @($llvm)
+        foreach ($tool in "cmake", "ninja") {
+            $found = $null
+            foreach ($c in @((Join-Path $vs "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"),
+                             (Join-Path $vs "Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja"),
+                             (Join-Path $env:ProgramFiles "CMake\bin"))) {
+                if (-not $found -and (Test-Path (Join-Path $c "$tool.exe"))) { $found = $c }
+            }
+            if (-not $found) {
+                $onpath = Get-Command $tool -ErrorAction SilentlyContinue
+                if ($onpath) { $found = Split-Path $onpath.Source }
+            }
+            if (-not $found) {
+                Fail ("$tool isn't installed. In Visual Studio Installer: Modify > Individual components > tick " +
+                      "'C++ CMake tools for Windows', Modify, then run this again")
+            }
+            Write-Host "${tool}: $found"
+            $extra += $found
+        }
+        $path = "set `"PATH=$($extra -join ';');%PATH%`" && "
         if (Test-Path $exe) { Remove-Item $exe }
         & cmd /c "call `"$devcmd`" -arch=x64 -host_arch=x64 >nul && $path cd /d `"$repo`" && Build-Source.cmd"
         if (-not (Test-Path $exe)) {
@@ -161,12 +186,16 @@ try {
         & gh repo view "$me/$RepoName" *> $null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Making $me/$RepoName (private)"
+            if (& git remote) { & git remote remove origin }
             & gh repo create $RepoName --private --source . --remote origin --push
             if ($LASTEXITCODE -ne 0) { Fail "couldn't make the repository" }
         } else {
             $vis = (& gh repo view "$me/$RepoName" --json visibility --jq .visibility).Trim()
             Write-Host "$me/$RepoName is there ($vis)"
-            if (-not (& git remote)) { & git remote add origin "https://github.com/$me/$RepoName.git" }
+            if (-not $Final -and $vis -ne "PRIVATE") { Fail "$me/$RepoName isn't private: a test goes to a private repository (-RepoName)" }
+            # origin is always this run's repository (a test's private one, or the public one for -Final)
+            if (& git remote) { & git remote set-url origin "https://github.com/$me/$RepoName.git" }
+            else { & git remote add origin "https://github.com/$me/$RepoName.git" }
             & git push -u origin main 2>$null
             if ($LASTEXITCODE -ne 0) {
                 # GitHub's main isn't behind this one: look at what it has. If every change on it is already here
@@ -199,7 +228,7 @@ try {
                 Write-Host ""
                 Write-Host "Done: the repository on GitHub is up to date." -ForegroundColor Green
                 Write-Host "  $title is already published, so it was left as it is (no new build or release)."
-                Write-Host "  For a new release, run with a new version: Make-MVP06-Final-Release.cmd -Version ""Beta 2"""
+                Write-Host "  For a new release, run with a new version: Make-MVP06-Final-Release.cmd -Version ""Beta 3"""
                 return
             }
         }
@@ -290,17 +319,51 @@ try {
         } else {
             & gh release view $tag *> $null
             if ($LASTEXITCODE -eq 0) { & gh release delete $tag --yes | Out-Null }
-            & gh release create $tag $zip --draft --prerelease --target main --title $title --notes-file RELEASE-NOTES.md
+            # the release page (and the Launcher's "what's new") gets this version's notes only, without its heading:
+            # the release's title says it
+            $all = [IO.File]::ReadAllText((Join-Path $repo "RELEASE-NOTES.md"))
+            $sec = [regex]::Match($all, "(?ms)^# MVP06-Plus $([regex]::Escape($Version))[ \t]*\r?\n(.*?)(?=^# MVP06-Plus |\z)")
+            $notes = Join-Path $env:TEMP "mvp06-plus-release-notes.md"
+            $text = if ($sec.Success) { $sec.Groups[1].Value.Trim() } else { $all }
+            [IO.File]::WriteAllText($notes, $text, (New-Object Text.UTF8Encoding $false))
+            & gh release create $tag $zip --draft --prerelease --target main --title $title --notes-file $notes
             if ($LASTEXITCODE -ne 0) { Fail "couldn't make the draft release" }
         }
     } finally { Pop-Location }
 
-    Step "Unzipping it as a player would"
     $player = Join-Path $Downloads ("MVP06-Plus-" + ($Version -replace '\s', '-'))
-    if (Test-Path $player) {
-        $player = $player + "-" + (Get-Date -Format "yyyyMMdd-HHmm")
+    if (Test-Path (Join-Path $player "assets\default.xbe")) {
+        # a test install already there, with the game installed: its program files replaced in place, as the
+        # Launcher's updater does. Everything that's the player's stays: game files, saves, backups, button art,
+        # shader cache, logs, settings
+        Step "Updating the test install in $player"
+        if (Get-Process -Name "MVP06", "MVP06-Plus-Launcher" -ErrorAction SilentlyContinue) {
+            Fail "close MVP06 and the MVP06-Plus Launcher first: Windows won't let their files be replaced while they run"
+        }
+        $keep = @("assets", "hdd", "save backups", "gc_icons", "ps2_icons", "shader_cache", "logs", ".update",
+                  "mvp06-settings.toml")
+        $fresh = Join-Path $env:TEMP ("mvp06-plus-update-" + [guid]::NewGuid())
+        Expand-Archive $zip -DestinationPath $fresh
+        $n = 0
+        Get-ChildItem $fresh -Recurse -File | ForEach-Object {
+            $rel = $_.FullName.Substring($fresh.Length + 1).Replace('\', '/')
+            $mine = $keep | Where-Object { $rel -eq $_ -or $rel.StartsWith($_ + "/") }
+            if (-not $mine) {
+                $dest = Join-Path $player $rel
+                New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+                Copy-Item $_.FullName $dest -Force
+                $n++
+            }
+        }
+        Remove-Item $fresh -Recurse -Force
+        Write-Host "Replaced $n program files; your game files, saves and settings are as they were"
+    } else {
+        Step "Unzipping it as a player would"
+        if (Test-Path $player) {
+            $player = $player + "-" + (Get-Date -Format "yyyyMMdd-HHmm")
+        }
+        Expand-Archive $zip -DestinationPath $player
     }
-    Expand-Archive $zip -DestinationPath $player
     Write-Host ""
     Write-Host "Done." -ForegroundColor Green
     Write-Host "  Player's folder: $player   (run MVP06-Plus-Launcher.exe there, then MVP06.exe)"

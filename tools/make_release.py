@@ -10,6 +10,7 @@ Writes MVP06-Plus-<version>.zip here, with a SHA256-MANIFEST.json of everything 
 import hashlib
 import json
 import os
+import re
 import sys
 import zipfile
 
@@ -25,7 +26,11 @@ def main():
     if len(sys.argv) not in (2, 3):
         raise SystemExit(__doc__)
     built = sys.argv[1]
-    version = sys.argv[2] if len(sys.argv) == 3 else "Beta 1"
+    launcher = re.search(r'^VERSION = "([^"]+)"', open(os.path.join(ROOT, "tools", "installer", "install.py"),
+                                                       encoding="utf-8").read(), re.M).group(1)
+    version = sys.argv[2] if len(sys.argv) == 3 else launcher
+    if version != launcher:  # the updater compares the Launcher's own version with the release's name
+        raise SystemExit(f"the release is {version} but the Launcher says {launcher} (tools/installer/install.py)")
     files = {}
     for n in BUILT:
         p = os.path.join(built, n)

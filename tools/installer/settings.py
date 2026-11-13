@@ -8,7 +8,7 @@ FILE = "mvp06-settings.toml"
 # what the Settings tab offers, with the shipped file's values as the defaults
 DISPLAY_MODES = ["windowed", "borderless", "fullscreen"]
 DEFAULTS = {"display_mode": "fullscreen", "width": 0, "height": 0, "render_percent": 100, "fps_cap": 60,
-            "vsync": True, "anisotropic_filtering": 16, "xbox_720p": True}
+            "vsync": True, "low_latency": False, "anisotropic_filtering": 16, "xbox_720p": True}
 
 
 def _parse(v):
@@ -58,10 +58,10 @@ def write(root, changes):
     for i, line in enumerate(lines):
         m = re.match(r"(\s*)([A-Za-z0-9_]+)(\s*=\s*)(.*)$", line)
         if m and m.group(2) in left:
-            rest = m.group(4)
-            comment = ""
-            if not rest.strip().startswith('"') and "#" in rest:
-                comment = "  #" + rest.split("#", 1)[1]
+            rest = m.group(4).strip()
+            if rest.startswith('"') and '"' in rest[1:]:
+                rest = rest[rest.index('"', 1) + 1:]  # a quoted value may hold a #: its comment is after it
+            comment = "  #" + rest.split("#", 1)[1] if "#" in rest else ""
             lines[i] = m.group(1) + m.group(2) + m.group(3) + _fmt(left.pop(m.group(2))) + comment
     for k, v in left.items():
         lines.append(f"{k} = {_fmt(v)}")

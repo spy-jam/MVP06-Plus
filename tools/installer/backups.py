@@ -12,7 +12,7 @@ import shutil
 import subprocess
 
 LIST = "backup-contents.txt"
-TITLE_UDATA = os.path.join("E", "UDATA", "4541008d")  # MVP 06 NCAA Baseball's title ID
+TITLE_UDATA = os.path.join("E", "UDATA", "4541008d")
 
 
 class BackupError(Exception):
